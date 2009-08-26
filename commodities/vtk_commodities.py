@@ -114,7 +114,7 @@ class MLabChacoPlot(HasTraits):
 
         # Create the mlab test mesh and get references to various parts of the
         # VTK pipeline
-        f = mlab.figure(size=(900,800))
+        f = mlab.figure(size=(700,500))
         self.m = mlab.points3d(self.prices['Gasoline Supply'], self.prices['Jet Fuel Supply'], self.prices['Distillate Supply'], self.prices['Crude Supply'])
         
         # Add another glyph module to render the full set of points
@@ -137,7 +137,7 @@ class MLabChacoPlot(HasTraits):
         rwi = scene.interactor
 
         plot.resizable = ""
-        plot.bounds = [800,150]
+        plot.bounds = [600,120]
         plot.padding = 25
         plot.bgcolor = "white"
         plot.outer_position = [30,30]
