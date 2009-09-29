@@ -5,6 +5,9 @@ position_test.py
 
 Created by Travis Vaught on 2009-09-29.
 Copyright (c) 2009 Vaught Consulting. All rights reserved.
+
+License: BSD
+
 """
 
 
