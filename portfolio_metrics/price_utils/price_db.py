@@ -25,9 +25,7 @@ import price_data
 def adapt_datetime(dt):
     # Get the datetime for the POSIX epoch.
     epoch = datetime.datetime.utcfromtimestamp(0.0)
-    # UTC adjustment for NY markets timezone (needed?)
-    dtutc = dt #+ datetime.timedelta(hours=5)
-    elapsedtime = dtutc - epoch
+    elapsedtime = dt - epoch
     # Calculate the number of milliseconds.
     seconds = float(elapsedtime.days)*24.*60.*60. + float(elapsedtime.seconds) + float(elapsedtime.microseconds)/1000000.0
     return seconds
