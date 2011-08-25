@@ -150,19 +150,14 @@ def populate_db(symbols, startdate, enddate, dbfilename):
         if num_saved:
             save_count+=1
             rec_count+=num_saved
-        status(100*count/tot)
+        # Give some indication of progress at the command line
+        print ".",
+        sys.stdout.flush()
 
     print "Saved %s records for %s out of %s symbols" % (rec_count,
                                                          save_count,
                                                          len(symbollist))
-
-def status(percent):
-    """ Simple command line progress indicator """
-    
-    prog = int(percent/4)
-    sys.stdout.write("%3d%%\r [" % percent + "="*prog + ">" + " "*(25-prog) + "] "),
-    sys.stdout.flush()
-    
+  
     
 def main():
     pass
