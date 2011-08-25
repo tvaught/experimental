@@ -1,1 +1,2 @@
 *.pyc
+/price_utils/stocks.db
