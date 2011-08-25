@@ -57,7 +57,7 @@ def get_yahoo_prices(symbol, startdate=None, enddate=None,
     if enddate is None:
         enddate = yesterdate
     else:
-        enddate = datetime.datetime.strptime(startdate, datefmt)
+        enddate = datetime.datetime.strptime(enddate, datefmt)
     
     # Note: account for Yahoo's messed up 0-indexed months
     url = "http://ichart.finance.yahoo.com/table.csv?s=%s&a=%d&b=%d&c=%d&"\
@@ -87,8 +87,7 @@ def get_yahoo_prices(symbol, startdate=None, enddate=None,
     return npdata
         
     
-def get_yahoo_dividends(symbol, startdate, enddate,
-                        period='d', datefmt="%Y-%m-%d"):
+def get_yahoo_dividends(symbol, startdate, enddate, datefmt="%Y-%m-%d"):
 
     """ Utility function to pull dividend date from Yahoo Finance site.
     
