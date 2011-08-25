@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # encoding: utf-8
 """
-get_price_data.py
+price_data.py
 
 Created by Travis Vaught on 2011-08-24.
-Copyright (c) 2011 __MyCompanyName__.
+Copyright (c) 2011 Vaught Management, LLC.
 License: BSD
 """
 
@@ -17,9 +17,9 @@ import numpy as np
 
 # Constants
 schema = np.dtype({'names':['symbol', 'date', 'open', 'high', 'low',
-                          'close', 'volume', 'adj_close'],
-                      'formats':['S8', 'M8', float, float, float, float,
-                          float, float]})
+                       'close', 'volume', 'adj_close'],
+                   'formats':['S8', 'M8', float, float, float, float,
+                       float, float]})
 
 def get_yahoo_prices(symbol, startdate=None, enddate=None,
                      period='d', datefmt="%Y-%m-%d"):

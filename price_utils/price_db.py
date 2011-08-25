@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # encoding: utf-8
 """
-db_tools.py
+price_db.py
 
 Created by Travis Vaught on 2011-08-24.
-Copyright (c) 2011 Vaught Consulting.
+Copyright (c) 2011 Vaught Management, LLC.
 License: BSD
 """
 
@@ -20,10 +20,23 @@ import sqlite3
 import price_data
 
 def adapt_datetime(dt):
-    return (dt - datetime.datetime(1970, 1, 1)) / datetime.timedelta(seconds=1)
+    # Get the datetime for the POSIX epoch.
+    epoch = datetime.datetime.utcfromtimestamp(0.0)
+    # UTC adjustment for NY markets timezone (needed?)
+    dtutc = dt #+ datetime.timedelta(hours=5)
+    elapsedtime = dtutc - epoch
+    # Calculate the number of milliseconds.
+    seconds = float(elapsedtime.days)*24.*60.*60. + float(elapsedtime.seconds) + float(elapsedtime.microseconds)/1000000.0
+    return seconds
 
 def convert_datetime(tf):
-    return datetime.fromtimestamp(tf)
+    # TODO: This part smells bad ... is there a better (faster) way to return
+    #     something that accounts for Daylight Savings Adjustments in NY?
+    tf = float(tf)
+    dst_adjustment = 6 * 60. * 60.
+    if time.localtime(tf).tm_isdst:
+        dst_adjustment = 5 * 60. * 60.
+    return datetime.datetime.fromtimestamp(tf+dst_adjustment)
     
 sqlite3.register_adapter(datetime.datetime, adapt_datetime)
 sqlite3.register_converter("datetime", convert_datetime)
@@ -32,7 +45,8 @@ def create_db(filename="test.db"):
     if os.path.exists(filename):
         raise IOError
     
-    conn = sqlite3.connect(filename)
+    conn = sqlite3.connect(filename, 
+        detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     conn.execute('''CREATE TABLE stocks (symbol text, date datetime, open float, high float, low float, close float, volume float, adjclose float)''')
     conn.execute('''CREATE UNIQUE INDEX stock_idx ON stocks (symbol, date)''')
     conn.commit()
@@ -47,7 +61,8 @@ def save_to_db(data, dbfilename="stocks.db"):
     if not os.path.exists(dbfilename):
         create_db(dbfilename)
 
-    conn = sqlite3.connect(dbfilename)
+    conn = sqlite3.connect(dbfilename,
+        detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     c = conn.cursor()
 
     # Wrap in a try block in case there's a duplicate given our UNIQUE INDEX
@@ -73,7 +88,8 @@ def load_from_db(symbol, startdate, enddate, dbfilename):
     
     print startdate, enddate
     
-    conn = sqlite3.connect(dbfilename)
+    conn = sqlite3.connect(dbfilename, 
+        detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     sql = "SELECT symbol, date as 'date [datetime]', open, high, low, " \
           "close, volume, adjclose from stocks where symbol='%s' and " \
           "date>=%s and  date<=%s" % (symbol, startdate, enddate)
@@ -83,7 +99,7 @@ def load_from_db(symbol, startdate, enddate, dbfilename):
     print recs
     table = np.array(recs, dtype=price_data.schema)
     
-    return table
+    return table, recs
     
     
 def main():
