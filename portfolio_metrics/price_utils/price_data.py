@@ -97,8 +97,6 @@ def get_yahoo_dividends(symbol, startdate, enddate, datefmt="%Y-%m-%d"):
             for the requested data.
         enddate: string, a date string representing the ending date for the 
             requested data.
-        period: string {'d', 'w', 'y'}, representing the period of data
-            requested.
         datefmt: string, a date format string designating the format for
             the startdate and enddate input parameters.
     
