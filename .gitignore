@@ -1,3 +1,4 @@
 *.pyc
 /price_utils/stocks.db
 /portfolio_metrics/data/stocks.db
+/portfolio_metrics/test.db
