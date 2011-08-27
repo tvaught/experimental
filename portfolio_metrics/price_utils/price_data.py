@@ -17,7 +17,7 @@ import numpy as np
 
 # Constants
 schema = np.dtype({'names':['symbol', 'date', 'open', 'high', 'low',
-                       'close', 'volume', 'adj_close'],
+                       'close', 'volume', 'adjclose'],
                    'formats':['S8', 'M8', float, float, float, float,
                        float, float]})
 
@@ -40,7 +40,7 @@ def get_yahoo_prices(symbol, startdate=None, enddate=None,
         numpy array containing dates and price/volume data in the following
         dtype:
         numpy.dtype({'names':['symbol', 'date', 'open', 'high', 'low',
-                              'close', 'volume', 'adj_close'],
+                              'close', 'volume', 'adjclose'],
                      'formats':['S8', 'M8', float, float, float, float,
                                 float, float]})
     """

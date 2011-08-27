@@ -4,10 +4,24 @@
 metrics.py
 
 Created by Travis Vaught on 2011-08-25.
-Copyright (c) 2011 Vaught Consulting. All rights reserved.
+Copyright (c) 2011 Vaught Management, LLC.
+License: BSD
 """
 
-def alpha(rates, bench_rates):
+# Major library imports
+import numpy as np
+from scipy import arange, array, corrcoef, cov, mean, polyfit, prod, sqrt, \
+    sum, var
+    
+# Constants
+HOURS_PER_DAY = 24.0
+MINUTES_PER_DAY = 60.0 * HOURS_PER_DAY
+SECONDS_PER_DAY = 60.0 * MINUTES_PER_DAY
+MICROSECONDS_PER_DAY = 1000000.0 * SECONDS_PER_DAY
+CALENDAR_DAYS_PER_YEAR = 365
+TRADING_DAYS_PER_YEAR = 252
+
+def alpha(ratearray, bench_ratearray):
     """ The intercept of the market returns vs. the benchmark returns 
         
         Parameters:
@@ -16,15 +30,15 @@ def alpha(rates, bench_rates):
            compare against
     """
     
-    return polyfit(bench_rates, rates,1)[1]
+    return polyfit(bench_ratearray['rate'], ratearray['rate'],1)[1]
 
 
-def annualized_rate(dates, rates):
+def annualized_rate(ratearray):
     """ Calculate the annualized return rate given periodic rates """
     
-    duration = dates[-1]-dates[0]
-    yrs = float(duration.days)/float(CALENDAR_DAYS_PER_YEAR)
-    total_return = chain_linked_return(rates)
+    duration = ratearray['date'][-1]-ratearray['date'][0]
+    yrs = float(duration.tolist().days)/float(CALENDAR_DAYS_PER_YEAR)
+    total_return = chain_linked_return(ratearray)
 
     # TODO: This needs to be checked
     return (total_return+1)**(1/yrs)-1
@@ -45,47 +59,46 @@ def annualized_adjusted_rate(ratearray, rfr=0.0):
     enddate = dates[-1]
     
     duration = enddate-startdate
-    yrs = float(duration.days)/float(CALENDAR_DAYS_PER_YEAR)
+    yrs = float(duration.tolist().days)/float(CALENDAR_DAYS_PER_YEAR)
     periods_per_year = len(dates)/yrs
     
     if not hasattr(rfr, '__iter__'):
         # calculate simple rate array for risk_free_rate
         # TODO: make sure we're explicit about the proper (simple vs. compounded) way
         #       to specify the risk_free_rate when it is provided as an array
-        rfr = rfr*(np.ones(len(rates)))/periods_per_year
+        rfr = rfr*(np.ones(len(ratearray)))/periods_per_year
     else:
         rfr = np.array(rfr)
         
     # get adjusted rate array (simple rates)
-    adj_ra = sum((rates - rfr))/yrs
+    adj_ra = sum((ratearray['rate'] - rfr))/yrs
 
     return adj_ra
 
 
-def beta(rates, bench_rates):
+def beta(ratearray, bench_ratearray):
     """ The slope of the market returns vs. the benchmark returns
         
         Parameters:
-         - rates: 1d array of return rates for market in question
-         - bench_rates: 1d array of return rates for benchmark to
-           compare against
+         - ratearray: recarray of dates and return rates
+         - bench_ratearray: recarray of return rates for benchmark instrument
     """
-    
-    return polyfit(bench_rates, rates, 1)[0]
+    print "##### bra: ",type(bench_ratearray)
+    print "#####  ra:", type(ratearray)
+    return polyfit(bench_ratearray['rate'], ratearray['rate'], 1)[0]
 
-def beta_bb(rates, bench_rates):
+def beta_bb(ratearray, bench_ratearray):
     """ The slope of the market returns vs. the benchmark returns
         * adjusted using Bloomberg adjustment factor
         
         Parameters:
-         - rates: 1d array of return rates
-         - bench_rates: 1d array of return rates for benchmark to
-           compare against
+         - ratearray: recarray of dates and return rates
+         - bench_rates: recarray of dates and return rates for benchmark
         Returns:
          - float
     """
     
-    return (0.33 + 0.67 * beta(rates, bench_rates))
+    return (0.33 + 0.67 * beta(ratearray, bench_ratearray))
     
 
 def chain_linked_return(ratearray):
@@ -106,7 +119,7 @@ def chain_linked_return(ratearray):
     return prod(1.0 + ratearray['rate']) - 1.0
     
     
-def expected_return(dates, rates, bench_rates, rfr=0.0):
+def expected_return(ratearray, bench_ratearray, rfr=0.0):
     """ Calculate the expected return using the Capital Asset
         Pricing Model (CAPM) approach.
         
@@ -123,8 +136,8 @@ def expected_return(dates, rates, bench_rates, rfr=0.0):
                 calculation of the annualized_adjusted_rate for the benchmark.
     """
     
-    betai = beta_bb(rates, bench_rates)
-    erm = annualized_adjusted_rate(dates, bench_rates, rfr)
+    betai = beta_bb(ratearray, bench_ratearray)
+    erm = annualized_adjusted_rate(bench_ratearray, rfr)
     eri = rfr + betai*(erm-rfr)
     
     return eri
@@ -150,11 +163,14 @@ def rate_array(pricearray, startprice=None, priceused='adjclose'):
         
     rates = []
     
-    for price in prices:
-        rates.append([price['date'], (price[priceused]/opn)-1 ])
+    for price in pricearray:
+        rates.append((price['date'], (price[priceused]/opn)-1 ))
         opn = price[priceused]
         
-    return array(rates)
+    dt_rates = np.dtype({'names':['date', 'rate'],
+                        'formats':['M8', float]})
+    
+    return np.array(rates, dtype=dt_rates)
     
     
 # EOF ####################################################################
