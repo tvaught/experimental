@@ -35,10 +35,10 @@ def convert_datetime(tf):
     # TODO: This part smells bad ... is there a better (faster) way to return
     #     something that accounts for Daylight Savings Adjustments in NY?
     tf = float(tf)
-    dst_adjustment = 6 * 60. * 60.
+    edt_adjustment = 6 * 60. * 60.
     if time.localtime(tf).tm_isdst:
-        dst_adjustment = 5 * 60. * 60.
-    return datetime.datetime.fromtimestamp(tf+dst_adjustment)
+        edt_adjustment = 5 * 60. * 60.
+    return datetime.datetime.fromtimestamp(tf+edt_adjustment)
     
 sqlite3.register_adapter(datetime.datetime, adapt_datetime)
 sqlite3.register_converter("datetime", convert_datetime)
@@ -141,6 +141,7 @@ def populate_db(symbols, startdate, enddate, dbfilename):
     
     tot = float(len(symbollist))
     count=0.0
+    print "loading data ..."
     for symbol in symbollist:
         data = price_data.get_yahoo_prices(symbol, startdate, enddate)
         num_saved = save_to_db(data, dbfilename)
@@ -149,7 +150,7 @@ def populate_db(symbols, startdate, enddate, dbfilename):
             save_count+=1
             rec_count+=num_saved
         # Give some indication of progress at the command line
-        print ".",
+        print symbol + "",
         sys.stdout.flush()
 
     print "Saved %s records for %s out of %s symbols" % (rec_count,
