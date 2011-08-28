@@ -2,3 +2,5 @@
 /price_utils/stocks.db
 /portfolio_metrics/data/stocks.db
 /portfolio_metrics/test.db
+/portfolio_metrics/chaco_mpt.png
+/portfolio_metrics/data/indexes.db
