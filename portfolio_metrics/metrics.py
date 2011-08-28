@@ -18,8 +18,10 @@ HOURS_PER_DAY = 24.0
 MINUTES_PER_DAY = 60.0 * HOURS_PER_DAY
 SECONDS_PER_DAY = 60.0 * MINUTES_PER_DAY
 MICROSECONDS_PER_DAY = 1000000.0 * SECONDS_PER_DAY
-CALENDAR_DAYS_PER_YEAR = 365
-TRADING_DAYS_PER_YEAR = 252
+CALENDAR_DAYS_PER_YEAR = 365.0
+TRADING_DAYS_PER_YEAR = 252.0
+WEEKS_PER_YEAR = 52.0
+MONTHS_PER_YEAR = 12.0
 
 def alpha(ratearray, bench_ratearray):
     """ The intercept of the market returns vs. the benchmark returns 
@@ -83,8 +85,7 @@ def beta(ratearray, bench_ratearray):
          - ratearray: recarray of dates and return rates
          - bench_ratearray: recarray of return rates for benchmark instrument
     """
-    print "##### bra: ",type(bench_ratearray)
-    print "#####  ra:", type(ratearray)
+    
     return polyfit(bench_ratearray['rate'], ratearray['rate'], 1)[0]
 
 def beta_bb(ratearray, bench_ratearray):
@@ -171,6 +172,29 @@ def rate_array(pricearray, startprice=None, priceused='adjclose'):
                         'formats':['M8', float]})
     
     return np.array(rates, dtype=dt_rates)
+    
+    
+def volatility(ratearray, period="d"):
+    """ Calculates annualized volatility from an
+        array of periodic rates of return.
+        
+        Parameters:
+         - ratearray: recarray of "date" and "rate" data
+           uniform rates of return (daily, monthly, etc.)
+         - period: string
+           "m", "w" or "d"
+           TODO: It may be optimal to infer the period from the dates --
+               punting on that for now.
+    """
+    
+    if period=="d":
+        periods = TRADING_DAYS_PER_YEAR
+    elif period=="w":
+        periods = WEEKS_PER_YEAR
+    elif period=="m":
+        periods = MONTHS_PER_YEAR
+        
+    return sqrt(periods) * ratearray['rate'].std()
     
     
 # EOF ####################################################################

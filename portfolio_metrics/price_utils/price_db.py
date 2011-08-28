@@ -126,7 +126,7 @@ def populate_db(symbols, startdate, enddate, dbfilename):
         # Try loading list from a file
         reader = csv.reader(open(symbols))
         
-        symbollist = []
+        symbolset = set()
         badchars = ["/", ":", "^", "%", "\\"]
 
         # pull symbols from file and put into list
@@ -135,14 +135,15 @@ def populate_db(symbols, startdate, enddate, dbfilename):
             symb = line[0]
             for itm in badchars:
                 symb = symb.replace(itm, "-")
-                symbollist.append(symb.strip())
+                symbolset.add(symb.strip())
+        symbollist = list(symbolset)
     else:
-        symbollist = symbols
+        symbollist = set(symbols)
     
     tot = float(len(symbollist))
     count=0.0
-    print "loading data ..."
-    for symbol in symbollist:
+    print "loading data ...", symbollist
+    for symbol in list(symbollist):
         data = price_data.get_yahoo_prices(symbol, startdate, enddate)
         num_saved = save_to_db(data, dbfilename)
         count+=1.0
