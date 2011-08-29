@@ -150,7 +150,7 @@ def rate_array(pricearray, startprice=None, priceused='adjclose'):
         Parameters:
         -----------
          - pricearray: array
-           1d array of price data (i.e. daily adj. close data)
+           recarray of price data (i.e. daily adj. close data)
          - startprice: float
            open price, if not provided first day close will be used
          - priceused: string

@@ -9,6 +9,7 @@ License: BSD
 """
 
 from price_data import get_yahoo_prices
-from price_db import save_to_db, load_from_db, populate_db
+from price_db import (adapt_datetime, convert_datetime, save_to_db,
+                      load_from_db, populate_db)
 
 

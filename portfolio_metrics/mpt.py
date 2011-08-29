@@ -11,9 +11,11 @@ License: BSD
 # Standard library imports ####
 import datetime
 import copy
+import pprint
 
-# Library imports ####
+# Major library imports ####
 import numpy as np
+from scipy.interpolate import interp1d
 import sqlite3
 
 # Local imports ####
@@ -43,7 +45,9 @@ class Stock(object):
                                         self.startdate,
                                         self.enddate,
                                         dbfilename=dbfilename)
-
+        print "bench:", len(self.bench_data)
+        print "stock:", len(self.stock_data)
+        
         if len(self.bench_data)!=len(self.stock_data):
             print("Full matching stock data not available: needs truncation")
         self.update_metrics()
@@ -100,7 +104,9 @@ class Portfolio(object):
         return
     
     def add_stock(self, symbol, weight, startdate, enddate):
-        self.stocks[symbol] = Stock(symbol, startdate, enddate)
+        print "Adding:", symbol
+        self.stocks[symbol] = Stock(symbol, startdate, enddate,
+                                    self.dbfilename)
         self.weights[symbol] = weight
     
 
@@ -111,22 +117,41 @@ class Portfolio(object):
             mark data will always be longer than the shortest stock data.
         """
         
+        dt_rates = np.dtype({'names':['date', 'rate'],
+                        'formats':['M8', float]})
+        
         # Start with a very early date.
         earliest_date = np.datetime64("1800-1-1")
-        
+        lastdatearray = None
         s = self.stocks
+        last_stock = s[-1]
+        lastdatearray = s[last_stock].ratearray['date']
         
         # Find shortest stock array length.
         for stock in s:
             if earliest_date < s[stock].ratearray['date'][0]:
                 earliest_date = s[stock].ratearray['date'][0]
-                
         for stock in s:
+            print "Leveling stock: ", stock
             sdate = s[stock].ratearray['date']
             if sdate[0]<earliest_date:
-                idx = np.where(sdate==earliest_date)
-                s[stock].ratearray = s[stock].ratearray[idx[0]:]
-                s[stock].bencharray = s[stock].bencharray[idx[0]:]
+                idx = np.where(sdate==earliest_date)[0]
+                s[stock].ratearray = s[stock].ratearray[idx:]
+                s[stock].bencharray = s[stock].bencharray[idx:]
+                
+                if lastdatearray is not None:
+                    if len(lastdatearray)!=len(s[stock].ratearray['date']):
+                        print "Imputing for: %s due to length differences" % (stock)
+                        x = np.array([price_utils.adapt_datetime(dt) for dt in s[stock].ratearray['date'].tolist()])
+                        y =s[stock].ratearray['rate']
+                        newx = np.array([price_utils.adapt_datetime(dt) for dt in lastdatearray.tolist()])
+                        f = interp1d(x,y)
+                        newy = f(newx)
+                        print "newx: %s, newy: %s" % (len(newx), len(newy))
+                        s[stock].ratearray = np.array(zip(lastdatearray, newy), dtype=dt_rates)
+                    
+                lastdatearray = s[stock].ratearray['date']
+                    
 
         return
         
@@ -199,8 +224,22 @@ class Portfolio(object):
         
         e = np.mat(e_ary).T
         
-        rates = np.array([self.stocks[symbol].ratearray['rate'] for symbol in self.symbols])
-        C = np.mat(np.cov(rates))
+        #ratelist = [self.stocks[symbol].ratearray['rate'] for symbol in self.symbols]
+        
+        ratelist = []
+        
+        for symb in self.symbols:
+            for i in self.stocks[symb].ratearray['rate']:
+                if type(i) != np.float64:
+                    print type(i)
+            ratelist.append(self.stocks[symb].ratearray['rate'].tolist())
+            print symb, len(self.stocks[symb].ratearray['rate'])
+        rates = np.array(ratelist, dtype=float)
+        print len(ratelist), len(ratelist[0])#, ratelist[0].dtype
+        #rates = np.asarray(ratelist)
+        
+        cv = np.cov(rates)
+        C = np.mat(cv)
         
         weights = np.array([self.weights[symbol] for symbol in self.symbols])
         x = np.mat(weights).T
