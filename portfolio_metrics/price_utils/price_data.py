@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # encoding: utf-8
 """
-get_price_data.py
+price_data.py
 
 Created by Travis Vaught on 2011-08-24.
-Copyright (c) 2011 __MyCompanyName__.
+Copyright (c) 2011 Vaught Management, LLC.
 License: BSD
 """
 
@@ -17,9 +17,9 @@ import numpy as np
 
 # Constants
 schema = np.dtype({'names':['symbol', 'date', 'open', 'high', 'low',
-                          'close', 'volume', 'adj_close'],
-                      'formats':['S8', 'M8', float, float, float, float,
-                          float, float]})
+                       'close', 'volume', 'adjclose'],
+                   'formats':['S8', 'M8', float, float, float, float,
+                       float, float]})
 
 def get_yahoo_prices(symbol, startdate=None, enddate=None,
                      period='d', datefmt="%Y-%m-%d"):
@@ -40,7 +40,7 @@ def get_yahoo_prices(symbol, startdate=None, enddate=None,
         numpy array containing dates and price/volume data in the following
         dtype:
         numpy.dtype({'names':['symbol', 'date', 'open', 'high', 'low',
-                              'close', 'volume', 'adj_close'],
+                              'close', 'volume', 'adjclose'],
                      'formats':['S8', 'M8', float, float, float, float,
                                 float, float]})
     """
@@ -57,7 +57,7 @@ def get_yahoo_prices(symbol, startdate=None, enddate=None,
     if enddate is None:
         enddate = yesterdate
     else:
-        enddate = datetime.datetime.strptime(startdate, datefmt)
+        enddate = datetime.datetime.strptime(enddate, datefmt)
     
     # Note: account for Yahoo's messed up 0-indexed months
     url = "http://ichart.finance.yahoo.com/table.csv?s=%s&a=%d&b=%d&c=%d&"\
@@ -87,8 +87,7 @@ def get_yahoo_prices(symbol, startdate=None, enddate=None,
     return npdata
         
     
-def get_yahoo_dividends(symbol, startdate, enddate,
-                        period='d', datefmt="%Y-%m-%d"):
+def get_yahoo_dividends(symbol, startdate, enddate, datefmt="%Y-%m-%d"):
 
     """ Utility function to pull dividend date from Yahoo Finance site.
     
@@ -98,8 +97,6 @@ def get_yahoo_dividends(symbol, startdate, enddate,
             for the requested data.
         enddate: string, a date string representing the ending date for the 
             requested data.
-        period: string {'d', 'w', 'y'}, representing the period of data
-            requested.
         datefmt: string, a date format string designating the format for
             the startdate and enddate input parameters.
     
