@@ -122,36 +122,48 @@ class Portfolio(object):
         
         # Start with a very early date.
         earliest_date = np.datetime64("1800-1-1")
-        lastdatearray = None
         s = self.stocks
-        last_stock = s[-1]
-        lastdatearray = s[last_stock].ratearray['date']
+        symbs = self.stocks.keys()
+
+        lengths = []
         
         # Find shortest stock array length.
-        for stock in s:
-            if earliest_date < s[stock].ratearray['date'][0]:
-                earliest_date = s[stock].ratearray['date'][0]
-        for stock in s:
-            print "Leveling stock: ", stock
-            sdate = s[stock].ratearray['date']
+        for symb in symbs:
+            if earliest_date < s[symb].ratearray['date'][0]:
+                earliest_date = s[symb].ratearray['date'][0]
+                
+        # Shorten rate and date data by lopping off the beginning dates to
+        #     match the shortest dataset.
+        for symb in symbs:
+            print "Leveling stock: ", symb
+            sdate = s[symb].ratearray['date']
             if sdate[0]<earliest_date:
                 idx = np.where(sdate==earliest_date)[0]
-                s[stock].ratearray = s[stock].ratearray[idx:]
-                s[stock].bencharray = s[stock].bencharray[idx:]
+                s[symb].ratearray = s[symb].ratearray[idx:]
+                s[symb].bencharray = s[symb].bencharray[idx:]
+            lengths.append(len(s[symb].ratearray))
+        
+        # Check to see if all lengths are the same now...
+        len_eq = np.array([lengths[i]==lengths[i+1] for i in range(len(lengths)-1)])
+        if not np.all(len_eq):
+            print "Missing data: imputing to calculate covariance"
+            len_ary = np.array(lengths)
+            max_len_idx = np.argmax(len_ary)
+            max_symb = symbs[max_len_idx]
+            newx = np.array([price_utils.adapt_datetime(dt) for dt in s[max_symb].ratearray['date'].tolist()])
+            
+            # Loop through symbols (again) to impute missing data
+            for symb in symbs:
                 
-                if lastdatearray is not None:
-                    if len(lastdatearray)!=len(s[stock].ratearray['date']):
-                        print "Imputing for: %s due to length differences" % (stock)
-                        x = np.array([price_utils.adapt_datetime(dt) for dt in s[stock].ratearray['date'].tolist()])
-                        y =s[stock].ratearray['rate']
-                        newx = np.array([price_utils.adapt_datetime(dt) for dt in lastdatearray.tolist()])
-                        f = interp1d(x,y)
-                        newy = f(newx)
-                        print "newx: %s, newy: %s" % (len(newx), len(newy))
-                        s[stock].ratearray = np.array(zip(lastdatearray, newy), dtype=dt_rates)
-                    
-                lastdatearray = s[stock].ratearray['date']
-                    
+                x = np.array([price_utils.adapt_datetime(dt) for dt in s[symb].ratearray['date'].tolist()])
+                y =s[symb].ratearray['rate']
+                if len(x)<len(newx):
+                    f = interp1d(x,y)
+                    print "x: %s %s, newx: %s %s" % (len(x), x.dtype, len(newx), newx.dtype )
+                    newy = f(newx)
+                    print "y: %s %s, newy: %s %s" % (len(y), type(y), len(newy), type(newy))
+                    newxdts = [price_utils.convert_datetime(dt) for dt in newx]
+                    s[symb].ratearray = np.array(zip(newxdts, newy), dtype=dt_rates)
 
         return
         

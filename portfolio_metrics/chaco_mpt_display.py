@@ -4,7 +4,7 @@
 chaco_mpt_display.py
 
 Created by Travis Vaught on 2011-08-23.
-Copyright (c) 2011 Vaught Management, LLC. All rights reserved.
+Copyright (c) 2011 Vaught Consulting. All rights reserved.
 """
 
 # Major library imports
@@ -57,20 +57,25 @@ class PortfolioModel(HasTraits):
                     resizable=True, title="Efficient Frontier"
                     )
 
+    def __init__(self, *args, **kw):
+        super(PortfolioModel, self).__init__(*args, **kw)
+        self.plot = self._create_plot_component()
+
     def _recalc_button_fired(self, event):
         self.plot = self._create_plot_component()
-        self.plot.invalidate_draw()
+        #self.plot.invalidate_draw()
         self.plot.request_redraw()
 
     def _plot_default(self):
-         return self._create_plot_component()
+        return self._create_plot_component()
     
     def get_stock_data(self):
         
         self.portfolio = p = mpt.Portfolio(symbols=self.symbols,
                                  startdate="2001-08-1", enddate="2011-08-11",
                                  dbfilename=db)
-        # Assemble and report pre-optimized porfolio data
+                                 
+        # Assemble and report pre-optimized portfolio data
         x = []
         y = []
 
@@ -121,18 +126,16 @@ class PortfolioModel(HasTraits):
     
         x, y = self.get_stock_data()
         efx, efy = self.get_ef_data()
-        xrange = DataRange1D(ArrayDataSource(np.arange(0.0,2.0,0.05)))
-        yrange = DataRange1D(ArrayDataSource(np.arange(-3.0,3.0,0.1)))
+
         pd = ArrayPlotData(x=x, y=y, efx=efx, efy=efy)
     
         # Create some plots of the data
         plot = Plot(pd)
 
         # Create a scatter plot (and keep a handle on it)
-        #stockplt = plot.plot(("x", "y"), color=(0.0,0.0,0.5,0.25),
-        #                                 type="scatter",
-        #                                 marker="circle",
-        #                                 index_range=xrange)[0]
+        stockplt = plot.plot(("x", "y"), color=(0.0,0.0,0.5,0.25),
+                                         type="scatter",
+                                         marker="circle")[0]
     
         efplt = plot.plot(("efx", "efy"), color=(0.0,0.5,0.0,0.25),
                                           type="scatter",
@@ -175,11 +178,11 @@ def save_plot(plot, filename, width, height):
     gc.save(filename)
 
 
-
-
 if __name__ == "__main__":
+
     pm = PortfolioModel()
-    print pm, pm.__dict__
+    print pm.symbols
+    print "Plot:", pm, pm.__dict__, pm.plot
     save_plot(pm.plot, "chaco_mpt.png", 800, 800)
     pm.configure_traits()
 
