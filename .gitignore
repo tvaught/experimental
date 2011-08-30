@@ -1,1 +1,3 @@
 *.pyc
+/price_utils/.DS_Store
+/price_utils/stocks.db
