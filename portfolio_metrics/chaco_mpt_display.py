@@ -22,22 +22,21 @@ from chaco.tools.api import PanTool, ZoomTool, DataLabelTool
 
 # Local imports
 from data_point_label import DataPointLabel
-import mpt
 from metrics import TRADING_DAYS_PER_YEAR
+import mpt
+import price_utils
 
-#symbols = ["CSCO", "AAPL", "IBM",  "MSFT", "GE", "WFC", "RIG", "T", "AA", "CAT"]
-
-symbols = ["AAPL", "CSCO", "EOG", "YUM", "AA", "BA", "COP"]
-#symbols = "data/SP500.csv"
 db = "data/stocks.db"
+symbols = price_utils.all_symbols(dbfilename=db)
 
-#symbols = ["VQNPX", "NAESX", "VGSIX", "VFSTX", "VGPMX", "VPACX"]
-#db = "data/indexes.db"
-
+# Some other ways to do symbols ...
+#symbols = ["CSCO", "AAPL", "IBM",  "MSFT", "GE", "WFC", "RIG", "T", "AA", "CAT"]
+init_symbols = ["AAPL", "CSCO", "EOG", "YUM", "AA", "BA", "COP"]
+#symbols = "data/SP500.csv"
 
 class PortfolioModel(HasTraits):
     
-    symbols = List(symbols, editor=SetEditor(values=symbols,
+    symbols = List(init_symbols, editor=SetEditor(values=symbols,
                                    can_move_all=True,
                                    left_column_title='Symbols',
                                    right_column_title='Selected Symbols'))
@@ -45,16 +44,22 @@ class PortfolioModel(HasTraits):
     portfolio = Instance(mpt.Portfolio)
     plot = Instance(Component)
     recalc_button = Button(label='Recalculate')
+    save_plot_button = Button(label='Save Plot')
     
     traits_view = View(
                     Group(
-                        Item('plot', editor=ComponentEditor(size=(400,300)),
-                             show_label=False),
-                        Item('symbols', style="custom"),
-                        Item('recalc_button', show_label=False),
-                        orientation = "horizontal",
-                        show_labels=False),
-                    resizable=True, title="Efficient Frontier"
+                        Group(
+                            Item('plot',
+                                 editor=ComponentEditor(size=(400,300)),
+                                 show_label=False),
+                            Item('symbols', style="custom"),
+                            orientation = "horizontal",
+                            show_labels=False),
+                            Item('recalc_button', show_label=False),
+                            Item('save_plot_button', show_label=False),
+                            ),
+                        resizable=True,
+                        title="Markowitz Mean-Variance View (MPT)"
                     )
 
     def __init__(self, *args, **kw):
@@ -65,6 +70,9 @@ class PortfolioModel(HasTraits):
         self.plot = self._create_plot_component()
         #self.plot.invalidate_draw()
         self.plot.request_redraw()
+
+    def _save_plot_button_fired(self, event):
+        save_plot(pm.plot, "chaco_ef.png", 400,300)
 
     def _plot_default(self):
         return self._create_plot_component()
@@ -93,8 +101,8 @@ class PortfolioModel(HasTraits):
         # friendly, start with annual volatility and convert for our
         # calculations.
         rt0 = 0.05
-        rtn = 1.5
-        rtstep = 0.05
+        rtn = 3.0
+        rtstep = 0.1
         tdy = TRADING_DAYS_PER_YEAR
         rtrange = np.arange(rt0/tdy, rtn/tdy, rtstep/tdy)
     
@@ -130,7 +138,7 @@ class PortfolioModel(HasTraits):
         pd = ArrayPlotData(x=x, y=y, efx=efx, efy=efy)
     
         # Create some plots of the data
-        plot = Plot(pd)
+        plot = Plot(pd, title="Efficient Frontier")
 
         # Create a scatter plot (and keep a handle on it)
         stockplt = plot.plot(("x", "y"), color=(0.0,0.0,0.5,0.25),
@@ -171,19 +179,20 @@ class PortfolioModel(HasTraits):
 
 
 def save_plot(plot, filename, width, height):
-    plot.outer_bounds = [width, height]
+    print "plot outer bounds:", plot.outer_bounds
+    plt_bounds = plot.outer_bounds
+    #plot.outer_bounds = [width, height]
     plot.do_layout(force=True)
-    gc = PlotGraphicsContext((width, height), dpi=72)
+    gc = PlotGraphicsContext(plt_bounds, dpi=72)
     gc.render_component(plot)
     gc.save(filename)
+    print "Plot saved to: ", filename
+
 
 
 if __name__ == "__main__":
 
     pm = PortfolioModel()
-    print pm.symbols
-    print "Plot:", pm, pm.__dict__, pm.plot
-    save_plot(pm.plot, "chaco_mpt.png", 800, 800)
     pm.configure_traits()
 
 #### EOF #################################################################

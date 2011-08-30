@@ -176,6 +176,22 @@ def symbol_exists(symbol, dbfilename="data/stocks.db"):
     startdate = table['date'][0]
     enddate = table['date'][-1]
     return len(table), startdate, enddate
+    
+
+def all_symbols(dbfilename="data/stocks.db"):
+    """ Convenience function to return a list of all symbols in the 
+        database.
+    """
+    
+    conn = sqlite3.connect(dbfilename, 
+        detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
+    sql = "SELECT DISTINCT symbol from stocks;"
+    qry = conn.execute(sql)
+    recs = qry.fetchall()
+    reclist = [list(rec)[0] for rec in recs]
+    return reclist
+
+
         
 def main():
     pass
