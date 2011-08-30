@@ -32,8 +32,8 @@ def adapt_datetime(dt):
 
 
 def convert_datetime(tf):
-    # TODO: This part smells bad ... is there a better (faster) way to return
-    #     something that accounts for Daylight Savings Adjustments in NY?
+    # Note: strange math is used to account for daylight savings time and 
+    #    times in the Eastern (US) time zone (e.g. EDT)
     tf = float(tf)
     edt_adjustment = 6 * 60. * 60.
     if time.localtime(tf).tm_isdst:
@@ -59,7 +59,7 @@ def create_db(filename="test.db"):
     return
 
 
-def save_to_db(data, dbfilename="stocks.db"):
+def save_to_db(data, dbfilename="data/stocks.db"):
     """ Utility function to save financial instrument price data to an SQLite
         database file."""
 
@@ -86,7 +86,7 @@ def save_to_db(data, dbfilename="stocks.db"):
     return change_count
 
 
-def load_from_db(symbol, startdate, enddate, dbfilename):
+def load_from_db(symbol, startdate, enddate, dbfilename="data/stocks.db"):
     """ Convenience function to pull data out of our price database. """
     
     # TODO: This is convoluted and, most-likely, quite slow... fix later
@@ -157,8 +157,26 @@ def populate_db(symbols, startdate, enddate, dbfilename):
     print "Saved %s records for %s out of %s symbols" % (rec_count,
                                                          save_count,
                                                          len(symbollist))
-  
     
+    
+def symbol_exists(symbol, dbfilename="data/stocks.db"):
+    """ Check for existence of symbol in specified dbfilename.  Returns a 
+        tuple of how many records, and the start and end dates of the data
+        available for the symbol.
+    """
+    
+    conn = sqlite3.connect(dbfilename, 
+        detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
+    sql = "SELECT symbol, date as 'date [datetime]' from stocks where symbol='%s';" % (symbol)
+    qry = conn.execute(sql)
+    recs = qry.fetchall()
+    schema = np.dtype({'names':['symbol', 'date'],
+                       'formats':['S8', 'M8']})
+    table = np.array(recs, dtype=schema)
+    startdate = table['date'][0]
+    enddate = table['date'][-1]
+    return len(table), startdate, enddate
+        
 def main():
     pass
 
