@@ -30,7 +30,7 @@ price_schema = np.dtype({'names':['symbol', 'date', 'open', 'high', 'low', 'clos
 class Stock(object):
     
     def __init__(self, symbol, startdate="1995-1-1",
-        enddate="2011-7-31", dbfilename='data/indexes.db', bench='^GSPC', rfr=0.015):
+        enddate="2003-7-31", dbfilename='data/indexes.db', bench='^GSPC', rfr=0.015):
         self.symbol = symbol
         self.startdate = startdate
         self.enddate = enddate
@@ -226,7 +226,6 @@ class Portfolio(object):
             
         """
         
-        
         e_ary = np.array([self.stocks[symbol].annualized_adjusted_return for symbol in self.symbols])
         
         e = np.mat(e_ary).T
@@ -285,9 +284,6 @@ class Portfolio(object):
                 if mu[i,0] < musell:
                     musell = mu[i,0]
                     isell = i
-                    
-        #isell = mu.argmin()
-        #ibuy = mu.argmax()
         
         if (mubuy-musell)<=0.0001:
             ibuy=isell=0

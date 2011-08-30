@@ -27,7 +27,7 @@ from metrics import TRADING_DAYS_PER_YEAR
 
 #symbols = ["CSCO", "AAPL", "IBM",  "MSFT", "GE", "WFC", "RIG", "T", "AA", "CAT"]
 
-symbols = ["AGN", "NYX", "EOG", "WLP", "CPB", "NYT", "YUM", "JWN"]
+symbols = ["AAPL", "CSCO", "EOG", "YUM", "AA", "BA", "COP"]
 #symbols = "data/SP500.csv"
 db = "data/stocks.db"
 
@@ -72,7 +72,7 @@ class PortfolioModel(HasTraits):
     def get_stock_data(self):
         
         self.portfolio = p = mpt.Portfolio(symbols=self.symbols,
-                                 startdate="2001-08-1", enddate="2011-08-11",
+                                 startdate="1996-07-1", enddate="2004-12-31",
                                  dbfilename=db)
                                  
         # Assemble and report pre-optimized portfolio data
