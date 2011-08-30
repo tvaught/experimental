@@ -28,7 +28,7 @@ from enthought.chaco.tools.api import (PanTool, ZoomTool, LineInspector,
                                        RangeSelection, RangeSelectionOverlay)
 from enthought.chaco.scales.api import CalendarScaleSystem
 from enthought.chaco.scales_tick_generator import ScalesTickGenerator
-from enthought.chaco.scales_axis import PlotAxis as ScalesPlotAxis
+from enthought.chaco.axis import PlotAxis as ScalesPlotAxis
 from enthought.enable.component_editor import ComponentEditor
 
 
@@ -65,6 +65,7 @@ def read_time_series_from_csv(filename, dtype=['float32', 'float32', 'float32'],
             tmpdtype = []
             names = line.strip().split(separator)
             for i, name in enumerate(names):
+                print i, name
                 tmpdtype.append(tuple([name.strip("\""), dtype[i]]))
             dtype = np.dtype(tmpdtype)
 
@@ -95,7 +96,7 @@ class CyclesPlot(HasTraits):
         # Normally you'd pass in the data, but I'll hardwire things for this
         #    one-off plot.
         
-        srecs = read_time_series_from_csv("./biz_cycles.csv",
+        srecs = read_time_series_from_csv("./biz_cycles2.csv",
                                           date_col=0, date_format="%Y-%m-%d")
         
         dt = srecs["Date"]
