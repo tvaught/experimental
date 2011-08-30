@@ -11,7 +11,6 @@ License: BSD
 # Standard library imports ####
 import datetime
 import copy
-import pprint
 
 # Major library imports ####
 import numpy as np
@@ -45,8 +44,7 @@ class Stock(object):
                                         self.startdate,
                                         self.enddate,
                                         dbfilename=dbfilename)
-        print "bench:", len(self.bench_data)
-        print "stock:", len(self.stock_data)
+
         
         if len(self.bench_data)!=len(self.stock_data):
             print("Full matching stock data not available: needs truncation")
@@ -135,7 +133,6 @@ class Portfolio(object):
         # Shorten rate and date data by lopping off the beginning dates to
         #     match the shortest dataset.
         for symb in symbs:
-            print "Leveling stock: ", symb
             sdate = s[symb].ratearray['date']
             if sdate[0]<earliest_date:
                 idx = np.where(sdate==earliest_date)[0]
@@ -159,9 +156,7 @@ class Portfolio(object):
                 y =s[symb].ratearray['rate']
                 if len(x)<len(newx):
                     f = interp1d(x,y)
-                    print "x: %s %s, newx: %s %s" % (len(x), x.dtype, len(newx), newx.dtype )
                     newy = f(newx)
-                    print "y: %s %s, newy: %s %s" % (len(y), type(y), len(newy), type(newy))
                     newxdts = [price_utils.convert_datetime(dt) for dt in newx]
                     s[symb].ratearray = np.array(zip(newxdts, newy), dtype=dt_rates)
 
@@ -236,19 +231,12 @@ class Portfolio(object):
         
         e = np.mat(e_ary).T
         
-        #ratelist = [self.stocks[symbol].ratearray['rate'] for symbol in self.symbols]
-        
         ratelist = []
         
         for symb in self.symbols:
-            for i in self.stocks[symb].ratearray['rate']:
-                if type(i) != np.float64:
-                    print type(i)
             ratelist.append(self.stocks[symb].ratearray['rate'].tolist())
-            print symb, len(self.stocks[symb].ratearray['rate'])
+
         rates = np.array(ratelist, dtype=float)
-        print len(ratelist), len(ratelist[0])#, ratelist[0].dtype
-        #rates = np.asarray(ratelist)
         
         cv = np.cov(rates)
         C = np.mat(cv)
