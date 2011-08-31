@@ -1,4 +1,13 @@
-""" Extends the DataLabel class to simply accept a text string (more general).
+#!/usr/bin/env python
+# encoding: utf-8
+"""
+data_point_label.py
+
+Created by Travis Vaught on 2011-08-25.
+Copyright (c) 2011 Vaught Management, LLC.
+License: BSD
+
+Extends the DataLabel class to simply accept a text string (more general).
 """
 
 # Major library imports

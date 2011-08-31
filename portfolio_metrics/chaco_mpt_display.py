@@ -4,7 +4,8 @@
 chaco_mpt_display.py
 
 Created by Travis Vaught on 2011-08-23.
-Copyright (c) 2011 Vaught Consulting. All rights reserved.
+Copyright (c) 2011 Vaught Management, LLC.
+License: BSD
 """
 
 # Major library imports
