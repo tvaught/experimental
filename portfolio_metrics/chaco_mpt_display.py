@@ -102,8 +102,8 @@ class PortfolioModel(HasTraits):
         # friendly, start with annual volatility and convert for our
         # calculations.
         rt0 = 0.05
-        rtn = 3.0
-        rtstep = 0.1
+        rtn = 4.0
+        rtstep = 0.2
         tdy = TRADING_DAYS_PER_YEAR
         rtrange = np.arange(rt0/tdy, rtn/tdy, rtstep/tdy)
     
@@ -149,7 +149,8 @@ class PortfolioModel(HasTraits):
         efplt = plot.plot(("efx", "efy"), color=(0.0,0.5,0.0,0.25),
                                           type="scatter",
                                           marker="circle")[0]
-    
+        efpltline = plot.plot(("efx", "efy"), color=(0.0,0.7,0.0,0.5),
+                                          type="line")[0]
     
         for i in range(len(self.symbols)):
             label = DataPointLabel(component=plot, data_point=(x[i], y[i]),

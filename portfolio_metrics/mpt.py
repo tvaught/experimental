@@ -32,6 +32,7 @@ class Stock(object):
     def __init__(self, symbol, startdate="1995-1-1",
         enddate="2003-7-31", dbfilename='data/indexes.db', bench='^GSPC', rfr=0.015):
         self.symbol = symbol
+        self.benchsymbol = bench
         self.startdate = startdate
         self.enddate = enddate
         self.rfr = rfr
@@ -56,11 +57,11 @@ class Stock(object):
         self.bencharray = rate_array(self.bench_data)
         # TODO: Not sure if these are the metrics I'm looking for...
         self.annual_volatility = volatility(self.ratearray)
-        #self.beta = beta_bb(self.ratearray, self.bencharray)
+        self.beta = beta_bb(self.ratearray, self.bencharray)
         self.annualized_adjusted_return = annualized_adjusted_rate(self.ratearray, rfr=0.01)
-        #self.expected_return = expected_return(self.ratearray,
-        #                                       self.bencharray,
-        #                                       rfr=self.rfr)
+        self.expected_return = expected_return(self.ratearray,
+                                               self.bencharray,
+                                               rfr=self.rfr)
         return
 
 
@@ -113,6 +114,8 @@ class Portfolio(object):
             all match.  Only do this for ratearray and bencharray objects
             in the stock objects for now.  This also assumes that the bench-
             mark data will always be longer than the shortest stock data.
+            TODO: there are still problems with the benchmark data needing 
+            truncation/imputing.
         """
         
         dt_rates = np.dtype({'names':['date', 'rate'],

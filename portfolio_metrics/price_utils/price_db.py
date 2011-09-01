@@ -142,7 +142,7 @@ def populate_db(symbols, startdate, enddate, dbfilename):
     
     tot = float(len(symbollist))
     count=0.0
-    print "loading data ...", symbollist
+    print "loading data ..."
     for symbol in list(symbollist):
         data = price_data.get_yahoo_prices(symbol, startdate, enddate)
         num_saved = save_to_db(data, dbfilename)
