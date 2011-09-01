@@ -57,11 +57,11 @@ class Stock(object):
         self.bencharray = rate_array(self.bench_data)
         # TODO: Not sure if these are the metrics I'm looking for...
         self.annual_volatility = volatility(self.ratearray)
-        self.beta = beta_bb(self.ratearray, self.bencharray)
+        #self.beta = beta_bb(self.ratearray, self.bencharray)
         self.annualized_adjusted_return = annualized_adjusted_rate(self.ratearray, rfr=0.01)
-        self.expected_return = expected_return(self.ratearray,
-                                               self.bencharray,
-                                               rfr=self.rfr)
+        #self.expected_return = expected_return(self.ratearray,
+        #                                       self.bencharray,
+        #                                       rfr=self.rfr)
         return
 
 

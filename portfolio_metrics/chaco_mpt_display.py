@@ -40,7 +40,9 @@ class PortfolioModel(HasTraits):
     symbols = List(init_symbols, editor=SetEditor(values=symbols,
                                    can_move_all=True,
                                    left_column_title='Symbols',
-                                   right_column_title='Selected Symbols'))
+                                   right_column_title='Selected Symbols',
+                                   )
+                                  )
     dbfilename = Str(db)
     portfolio = Instance(mpt.Portfolio)
     plot = Instance(Component)
@@ -49,21 +51,27 @@ class PortfolioModel(HasTraits):
     
     traits_view = View(
                     Group(
+                    
+                        Item('plot',
+                             editor=ComponentEditor(size=(800,600)),
+                             show_label=False),
                         Group(
-                            Item('plot',
-                                 editor=ComponentEditor(size=(400,300)),
-                                 show_label=False),
-                            Item('symbols', style="custom"),
-                            orientation = "horizontal",
+                            Item('symbols', style="simple"),
+                            Group(
+                                Item('recalc_button', show_label=False),
+                                Item('save_plot_button', show_label=False),
+                                orientation="vertical"),
+                            orientation="horizontal",
                             show_labels=False),
-                            Item('recalc_button', show_label=False),
-                            Item('save_plot_button', show_label=False),
-                            ),
-                        resizable=True,
-                        title="Markowitz Mean-Variance View (MPT)"
+                        orientation="vertical",
+                        show_labels=False
+                        ),
+                    resizable=True,
+                    title="Markowitz Mean-Variance View (MPT)"
                     )
 
     def __init__(self, *args, **kw):
+        self.symbols.sort()
         super(PortfolioModel, self).__init__(*args, **kw)
         self.plot = self._create_plot_component()
 
@@ -140,7 +148,7 @@ class PortfolioModel(HasTraits):
     
         # Create some plots of the data
         plot = Plot(pd, title="Efficient Frontier")
-
+        
         # Create a scatter plot (and keep a handle on it)
         stockplt = plot.plot(("x", "y"), color=(0.0,0.0,0.5,0.25),
                                          type="scatter",
@@ -172,7 +180,10 @@ class PortfolioModel(HasTraits):
 
         # Tweak some of the plot properties
         plot.padding = 50
-
+        stockplt.value_range.low=-0.3
+        stockplt.value_range.high=0.7
+        stockplt.index_range.low=0.0
+        stockplt.index_range.high=0.8
         # Attach some tools to the plot
         plot.tools.append(PanTool(plot, drag_button="right"))
         plot.overlays.append(ZoomTool(plot))
