@@ -53,7 +53,7 @@ class PortfolioModel(HasTraits):
                     Group(
                     
                         Item('plot',
-                             editor=ComponentEditor(size=(800,600)),
+                             editor=ComponentEditor(size=(600,380)),
                              show_label=False),
                         Group(
                             Item('symbols', style="simple"),
