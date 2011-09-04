@@ -15,29 +15,58 @@ import copy
 # Major library imports ####
 import numpy as np
 from scipy.interpolate import interp1d
-import sqlite3
 
 # Local imports ####
 from metrics import (annualized_adjusted_rate, beta_bb, 
     expected_return, rate_array, volatility, TRADING_DAYS_PER_YEAR)
-    
+
 import price_utils
 
 # Constants ####
-price_schema = np.dtype({'names':['symbol', 'date', 'open', 'high', 'low', 'close', 'volume', 'adj_close'], 'formats':['S8', long, float, float, float, float, float, float]})
+price_schema = np.dtype({'names':['symbol', 'date', 'open', 'high', 'low', 'close', 'volume', 'adjclose'],
+                         'formats':['S8', 'M8', float, float, float, float, float, float]})
+
+
+def align_dates(olddates, olddata, newdates):
+    """ Function to align data given two differing date streams.
+        Parameters:
+            olddates: array of datetime64 type representing dates with misalignment
+            olddata: array floats representing data for olddates
+            newdates: array of datetime64 type representing new dates with which we should align.
+        Returns:
+            newdata: array of data aligned with newdates
+    """
+    olddatefloats = np.array([price_utils.adapt_datetime(dt) for dt in olddates.tolist()])
+    newdatefloats = np.array([price_utils.adapt_datetime(dt) for dt in newdates.tolist()])
+    datesbelow = newdatefloats < olddatefloats[0]
+    datesabove = newdatefloats > olddatefloats[-1]
+    dts = ~(datesabove | datesbelow)
+    print datesbelow
+    print datesabove
+    print dts
+    f = interp1d(olddatefloats, olddata)
+
+    newdata = f(newdatefloats[dts])
+    print newdata, len(newdata)
+    return newdata
 
 
 class Stock(object):
     
     def __init__(self, symbol, startdate="1995-1-1",
         enddate="2003-7-31", dbfilename='data/indexes.db', bench='^GSPC', rfr=0.015):
+        """ Stock object with some methods to call metrics functions to pre-
+            populate some attributes, as well as methods to impute to a given
+            datearray.
+        """
+
         self.symbol = symbol
         self.benchsymbol = bench
         self.startdate = startdate
         self.enddate = enddate
         self.rfr = rfr
         
-        self.bench_data = price_utils.load_from_db(bench, 
+        self.bench_data = price_utils.load_from_db(bench,
                                         self.startdate,
                                         self.enddate,
                                         dbfilename=dbfilename)
@@ -46,46 +75,57 @@ class Stock(object):
                                         self.enddate,
                                         dbfilename=dbfilename)
 
-        self.dates = sdates = self.stock_data['date']
-        self.stock_prices = sp = self.stock_data['adjclose']
-        self.bench_prices = bp = self.bench_data['adjclose']
+        sdates = self.stock_data['date']
 
-        # Check alignment of data:
-        if not np.alltrue(self.bench_data['date']==sdates):
-            self.bench_prices = self.align_dates(self.bench_data['date'],self.bench_prices, sdates)
+        # Not sure about this approach in using return values...seemed useful
+        # at the time.
+        if not self.impute_to(sdates):
+            self.update_metrics()
 
-        if len(self.bench_data)!=len(self.stock_data):
-            print("Full matching stock data not available: needs truncation")
 
-        self.update_metrics()
+    def impute_to(self, dts):
+        """ Method impute stock data to match given dates.
 
-        
-    def align_dates(self, olddates, olddata, newdates):
-        """ Method to align data given two differing date streams.
-            Parameters:
-                olddates: array of datetime64 type representing dates with misalignment
-                olddata: array of data for olddates
-                newdates: array of datetime64 type representing new dates with which we should align.
-            Returns:
-                newdata: array of data aligned with newdates
+            Note: this only works when _shortening_ the data and filling in
+                  a few missing values.
         """
-        datesbelow = newdates < olddates
-        datesabove = sdates > bdates
-        dts = ~(datesabove | datesbelow)
-        f = interp1d(olddates, olddata)
-        return f(newdates[dts])
+        # Check alignment of bench_data as a test whether we need to impute
+        #   TODO: this is a bit hackish
+        if not np.alltrue(self.bench_data['date']==dts):
+            sdata = []
+            ssymb = [self.benchsymbol for x in range(len(dts))]
+            bdata = []
+            bsymb = [self.benchsymbol for x in range(len(dts))]
+
+            for fld in price_schema.names[2:]:
+                sdata.append(align_dates(self.stock_data['date'], self.stock_data[fld], dts))
+                bdata.append(align_dates(self.bench_data['date'], self.bench_data[fld], dts))
+
+            srecs = zip(ssymb, dts, *tuple(sdata))
+            brecs = zip(bsymb, dts, *tuple(bdata))
+
+            self.stock_data = np.array(srecs, dtype=price_schema)
+            self.bench_data = np.array(brecs, dtype=price_schema)
+            self.update_metrics()
+            return True
+        else:
+            return False
 
 
     def update_metrics(self):
+        self.dates = self.stock_data['date']
+        self.stock_prices = self.stock_data['adjclose']
+        self.bench_prices = self.bench_data['adjclose']
         self.ratearray = rate_array(self.stock_data)
         self.bencharray = rate_array(self.bench_data)
+
         # TODO: Not sure if these are the metrics I'm looking for...
         self.annual_volatility = volatility(self.ratearray)
-        #self.beta = beta_bb(self.ratearray, self.bencharray)
+        self.beta = beta_bb(self.ratearray, self.bencharray)
         self.annualized_adjusted_return = annualized_adjusted_rate(self.ratearray, rfr=0.01)
-        #self.expected_return = expected_return(self.ratearray,
-        #                                       self.bencharray,
-        #                                       rfr=self.rfr)
+        self.expected_return = expected_return(self.ratearray,
+                                               self.bencharray,
+                                               rfr=self.rfr)
         return
 
 
@@ -146,46 +186,22 @@ class Portfolio(object):
                         'formats':['M8', float]})
         
         # Start with a very early date.
-        earliest_date = np.datetime64("1800-1-1")
-        s = self.stocks
+        latest_start_date = np.datetime64("1800-1-1")
         symbs = self.stocks.keys()
+        s = self.stocks
 
         lengths = []
         
         # Find shortest stock array length.
         for symb in symbs:
-            if earliest_date < s[symb].ratearray['date'][0]:
-                earliest_date = s[symb].ratearray['date'][0]
+            if latest_start_date < s[symb].stock_data['date'][0]:
+                latest_start_date = s[symb].stock_data['date'][0]
+                latest_start_symb = symb
                 
-        # Shorten rate and date data by lopping off the beginning dates to
-        #     match the shortest dataset.
-        for symb in symbs:
-            sdate = s[symb].ratearray['date']
-            if sdate[0]<earliest_date:
-                idx = np.where(sdate==earliest_date)[0]
-                s[symb].ratearray = s[symb].ratearray[idx:]
-                s[symb].bencharray = s[symb].bencharray[idx:]
-            lengths.append(len(s[symb].ratearray))
-        
-        # Check to see if all lengths are the same now...
-        len_eq = np.array([lengths[i]==lengths[i+1] for i in range(len(lengths)-1)])
-        if not np.all(len_eq):
-            print "Missing data: imputing to calculate covariance"
-            len_ary = np.array(lengths)
-            max_len_idx = np.argmax(len_ary)
-            max_symb = symbs[max_len_idx]
-            newx = np.array([price_utils.adapt_datetime(dt) for dt in s[max_symb].ratearray['date'].tolist()])
-            
-            # Loop through symbols (again) to impute missing data
-            for symb in symbs:
-                
-                x = np.array([price_utils.adapt_datetime(dt) for dt in s[symb].ratearray['date'].tolist()])
-                y =s[symb].ratearray['rate']
-                if len(x)<len(newx):
-                    f = interp1d(x,y)
-                    newy = f(newx)
-                    newxdts = [price_utils.convert_datetime(dt) for dt in newx]
-                    s[symb].ratearray = np.array(zip(newxdts, newy), dtype=dt_rates)
+        # Assume symbol with latest start is best choice to impute
+        # other stock data toward.
+        for stk in s:
+            s[stk].impute_to(s[latest_start_symb].stock_data['date'])
 
         return
         
