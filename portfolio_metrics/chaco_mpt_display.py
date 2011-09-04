@@ -28,7 +28,8 @@ import mpt
 import price_utils
 
 db = "data/stocks.db"
-symbols = price_utils.all_symbols(dbfilename=db)
+# TODO: Get rid of "tolist" requirement
+symbols = price_utils.load_symbols_from_table(dbfilename=db)['symbol'].tolist()
 
 # Some other ways to do symbols ...
 #symbols = ["CSCO", "AAPL", "IBM",  "MSFT", "GE", "WFC", "RIG", "T", "AA", "CAT"]
@@ -96,7 +97,7 @@ class PortfolioModel(HasTraits):
         x = []
         y = []
 
-        for symbol in p.symbols:
+        for symbol in p.stocks:
             stk = p.stocks[symbol]
             x.append(stk.annual_volatility)
             y.append(stk.annualized_adjusted_return)
@@ -140,9 +141,13 @@ class PortfolioModel(HasTraits):
 
 
     def _create_plot_component(self):
-    
+
         x, y = self.get_stock_data()
+        print x,y
         efx, efy = self.get_ef_data()
+        print efx,efy
+        p = self.portfolio
+        symbs = p.stocks.keys()
 
         pd = ArrayPlotData(x=x, y=y, efx=efx, efy=efy)
     
@@ -160,7 +165,7 @@ class PortfolioModel(HasTraits):
         efpltline = plot.plot(("efx", "efy"), color=(0.0,0.7,0.0,0.5),
                                           type="line")[0]
     
-        for i in range(len(self.symbols)):
+        for i in range(len(p.stocks)):
             label = DataPointLabel(component=plot, data_point=(x[i], y[i]),
                               label_position="bottom right",
                               padding=4,
@@ -192,15 +197,12 @@ class PortfolioModel(HasTraits):
 
 
 def save_plot(plot, filename, width, height):
-    print "plot outer bounds:", plot.outer_bounds
     plt_bounds = plot.outer_bounds
-    #plot.outer_bounds = [width, height]
     plot.do_layout(force=True)
     gc = PlotGraphicsContext(plt_bounds, dpi=72)
     gc.render_component(plot)
     gc.save(filename)
     print "Plot saved to: ", filename
-
 
 
 if __name__ == "__main__":

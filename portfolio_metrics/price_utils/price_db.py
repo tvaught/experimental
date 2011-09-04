@@ -54,6 +54,8 @@ def create_db(filename="test.db"):
         detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     conn.execute('''CREATE TABLE stocks (symbol text, date datetime, open float, high float, low float, close float, volume float, adjclose float)''')
     conn.execute('''CREATE UNIQUE INDEX stock_idx ON stocks (symbol, date)''')
+    conn.execute('''CREATE TABLE symbol_list (symbol text, startdate datetime, enddate datetime, entries long)''')
+    conn.execute('''CREATE UNIQUE INDEX symbols_idx ON symbol_list (symbol)''')
     conn.commit()
     conn.close()
     return
@@ -157,6 +159,9 @@ def populate_db(symbols, startdate, enddate, dbfilename):
     print "Saved %s records for %s out of %s symbols" % (rec_count,
                                                          save_count,
                                                          len(symbollist))
+    print "Populating symbol table..."
+
+    populate_symbol_list(dbfilename)
     
     
 def symbol_exists(symbol, dbfilename="data/stocks.db"):
@@ -173,8 +178,8 @@ def symbol_exists(symbol, dbfilename="data/stocks.db"):
     schema = np.dtype({'names':['symbol', 'date'],
                        'formats':['S8', 'M8']})
     table = np.array(recs, dtype=schema)
-    startdate = table['date'][0]
-    enddate = table['date'][-1]
+    startdate = np.datetime64(table['date'][0])
+    enddate = np.datetime64(table['date'][-1])
     return len(table), startdate, enddate
     
 
@@ -191,6 +196,61 @@ def all_symbols(dbfilename="data/stocks.db"):
     reclist = [list(rec)[0] for rec in recs]
     return reclist
 
+def load_symbols_from_table(dbfilename="data/stocks.db"):
+    """ Should be same as all_symbols function and symbol_exists combined,
+        but pulling from cached data in table.
+    """
+    conn = sqlite3.connect(dbfilename,
+        detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
+    sql = "SELECT symbol, startdate as 'startdate [datetime]', enddate as 'enddate [datetime]', entries from symbol_list;"
+    qry = conn.execute(sql)
+    recs = qry.fetchall()
+    dt = np.dtype({'names':['symbol', 'startdate', 'enddate', 'entries'],
+                   'formats':['S8', 'M8', 'M8', long]})
+    return np.array(recs, dtype=dt)
+
+
+def populate_symbol_list(dbfilename="data/stocks.db", symbols=None):
+    """ Function to prepopulate a table with symbols where we don't have
+        to hammer the db every time.
+        Returns the number of records added.
+    """
+
+    if not os.path.exists(dbfilename):
+        create_db(dbfilename)
+
+    if symbols is None:
+        symbols = all_symbols(dbfilename=dbfilename)
+
+    dt = np.dtype({'names':['symbol', 'startdate', 'enddate', 'entries'],
+                   'formats':['S8', 'M8', 'M8', long]})
+    data = []
+
+    for symbol in symbols:
+        entries, startdate, enddate = symbol_exists(symbol)
+        data.append((symbol, startdate, enddate, entries))
+
+    data = np.array(data, dtype=dt)
+
+
+    conn = sqlite3.connect(dbfilename,
+        detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
+    c = conn.cursor()
+
+    # Wrap in a try block in case there's a duplicate given our UNIQUE INDEX
+    #     criteria above.
+    try:
+        sql = "INSERT INTO symbol_list (symbol, startdate, enddate, entries) VALUES (?, ?, ?, ?);"
+
+        c.executemany(sql, data.tolist())
+    except sqlite3.IntegrityError:
+        pass
+
+    conn.commit()
+    change_count = conn.total_changes
+    c.close()
+    conn.close()
+    return change_count
 
         
 def main():

@@ -41,13 +41,11 @@ def align_dates(olddates, olddata, newdates):
     datesbelow = newdatefloats < olddatefloats[0]
     datesabove = newdatefloats > olddatefloats[-1]
     dts = ~(datesabove | datesbelow)
-    print datesbelow
-    print datesabove
-    print dts
+
     f = interp1d(olddatefloats, olddata)
 
     newdata = f(newdatefloats[dts])
-    print newdata, len(newdata)
+
     return newdata
 
 
@@ -75,6 +73,9 @@ class Stock(object):
                                         self.enddate,
                                         dbfilename=dbfilename)
 
+        # Bail out of initialization if there is no data
+        if len(self.stock_data)==0:
+            return
         sdates = self.stock_data['date']
 
         # Not sure about this approach in using return values...seemed useful
@@ -141,36 +142,34 @@ class Portfolio(object):
                        startdate="2004-1-1",
                        enddate="2011-8-12",
                        dbfilename="data/indexes.db"):
-        
-        symbols.sort() #TODO: is this advisable?
-        self.symbols = symbols
-        
-        if weights=="equal":
-            self.weights = dict(zip(symbols, self.equal_weight()))
-        else:
-            self.weights = dict(zip(symbols,weights))
-        
+
         self.startdate = startdate
         self.enddate = enddate
         self.dbfilename = dbfilename
-        
-        self.get_initial_stock_data()
+
+        self.stocks = {}
+
+        # Get stock data:
+        for symbol in symbols:
+            print "Adding: ", symbol,
+            s = Stock(symbol, startdate, enddate, self.dbfilename)
+
+            # Only add it to the portfolio if it has data
+            if len(s.stock_data)>0:
+                self.stocks[symbol] = s
+
+        self.symbols = self.stocks.keys()
+        self.symbols.sort()
         self.level_lengths()
         
+        if weights=="equal":
+            self.weights = dict(zip(self.symbols, self.equal_weight()))
+        else:
+            # This will not add up to 1.0 if any symbols are dropped due to
+            #   a lack of data.  TODO: figure out a better approach.
+            self.weights = dict(zip(self.symbols, weights))
+        
         return
-
-    def get_initial_stock_data(self):
-        self.stocks = {}
-        for symbol in self.symbols:
-            self.add_stock(symbol, self.weights[symbol],
-                           self.startdate, self.enddate)
-        return
-    
-    def add_stock(self, symbol, weight, startdate, enddate):
-        print "Adding:", symbol
-        self.stocks[symbol] = Stock(symbol, startdate, enddate,
-                                    self.dbfilename)
-        self.weights[symbol] = weight
     
 
     def level_lengths(self):
@@ -181,19 +180,15 @@ class Portfolio(object):
             TODO: there are still problems with the benchmark data needing 
             truncation/imputing.
         """
-        
-        dt_rates = np.dtype({'names':['date', 'rate'],
-                        'formats':['M8', float]})
-        
+
         # Start with a very early date.
         latest_start_date = np.datetime64("1800-1-1")
         symbs = self.stocks.keys()
         s = self.stocks
-
-        lengths = []
         
         # Find shortest stock array length.
         for symb in symbs:
+            print "leveling: ", symb
             if latest_start_date < s[symb].stock_data['date'][0]:
                 latest_start_date = s[symb].stock_data['date'][0]
                 latest_start_symb = symb
