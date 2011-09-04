@@ -46,12 +46,36 @@ class Stock(object):
                                         self.enddate,
                                         dbfilename=dbfilename)
 
-        
+        self.dates = sdates = self.stock_data['date']
+        self.stock_prices = sp = self.stock_data['adjclose']
+        self.bench_prices = bp = self.bench_data['adjclose']
+
+        # Check alignment of data:
+        if not np.alltrue(self.bench_data['date']==sdates):
+            self.bench_prices = self.align_dates(self.bench_data['date'],self.bench_prices, sdates)
+
         if len(self.bench_data)!=len(self.stock_data):
             print("Full matching stock data not available: needs truncation")
+
         self.update_metrics()
+
         
-        
+    def align_dates(self, olddates, olddata, newdates):
+        """ Method to align data given two differing date streams.
+            Parameters:
+                olddates: array of datetime64 type representing dates with misalignment
+                olddata: array of data for olddates
+                newdates: array of datetime64 type representing new dates with which we should align.
+            Returns:
+                newdata: array of data aligned with newdates
+        """
+        datesbelow = newdates < olddates
+        datesabove = sdates > bdates
+        dts = ~(datesabove | datesbelow)
+        f = interp1d(olddates, olddata)
+        return f(newdates[dts])
+
+
     def update_metrics(self):
         self.ratearray = rate_array(self.stock_data)
         self.bencharray = rate_array(self.bench_data)
