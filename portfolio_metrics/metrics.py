@@ -172,7 +172,25 @@ def rate_array(pricearray, startprice=None, priceused='adjclose'):
                         'formats':['M8', float]})
     
     return np.array(rates, dtype=dt_rates)
-    
+
+
+def sharpe_ratio(ratearray, rfr=0.0):
+    """ Sharpe Ratio
+        defined as:
+
+        rate_of_return-risk_free_rate/sigma where,
+         - rate_of_return: Avg. return (expected return)
+         - risk_free_rate: Risk-free rate of Return
+         - sigma: standard deviation
+
+        Parameters:
+         - ratearray: recarray of dates and rates
+         - rfr: float or array of floats the annualized risk_free_rate of return
+    """
+
+    excess_return = annualized_adjusted_rate(ratearray, rfr)
+    sigma = ratearray['rate'].std()
+    return excess_return/sigma
     
 def volatility(ratearray, period="d"):
     """ Calculates annualized volatility from an

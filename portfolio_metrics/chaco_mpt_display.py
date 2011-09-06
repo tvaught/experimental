@@ -13,13 +13,14 @@ import numpy as np
 
 # Enthought library imports
 from enable.api import Component, ComponentEditor
+from enable.tools.hover_tool import HoverTool
 from traits.api import HasTraits, Instance, List, Str, Tuple, Button
 from traitsui.api import Item, Group, View, SetEditor
 
 # Chaco imports
 from chaco.api import (ArrayPlotData, Plot, Label, PlotGraphicsContext,
-                      DataRange1D, ArrayDataSource)
-from chaco.tools.api import PanTool, ZoomTool, DataLabelTool
+                      DataRange1D, ArrayDataSource, ScatterInspectorOverlay)
+from chaco.tools.api import PanTool, ZoomTool, DataLabelTool, ScatterInspector
 
 # Local imports
 from data_point_label import DataPointLabel
@@ -28,7 +29,8 @@ import mpt
 import price_utils
 
 db = "data/stocks.db"
-symbols = price_utils.all_symbols(dbfilename=db)
+# TODO: Get rid of "tolist" requirement
+symbols = price_utils.load_symbols_from_table(dbfilename=db)['symbol'].tolist()
 
 # Some other ways to do symbols ...
 #symbols = ["CSCO", "AAPL", "IBM",  "MSFT", "GE", "WFC", "RIG", "T", "AA", "CAT"]
@@ -53,7 +55,7 @@ class PortfolioModel(HasTraits):
                     Group(
                     
                         Item('plot',
-                             editor=ComponentEditor(size=(800,600)),
+                             editor=ComponentEditor(size=(600,380)),
                              show_label=False),
                         Group(
                             Item('symbols', style="simple"),
@@ -96,7 +98,7 @@ class PortfolioModel(HasTraits):
         x = []
         y = []
 
-        for symbol in p.symbols:
+        for symbol in p.stocks:
             stk = p.stocks[symbol]
             x.append(stk.annual_volatility)
             y.append(stk.annualized_adjusted_return)
@@ -140,9 +142,12 @@ class PortfolioModel(HasTraits):
 
 
     def _create_plot_component(self):
-    
+
         x, y = self.get_stock_data()
         efx, efy = self.get_ef_data()
+
+        p = self.portfolio
+        symbs = p.stocks.keys()
 
         pd = ArrayPlotData(x=x, y=y, efx=efx, efy=efy)
     
@@ -160,7 +165,7 @@ class PortfolioModel(HasTraits):
         efpltline = plot.plot(("efx", "efy"), color=(0.0,0.7,0.0,0.5),
                                           type="line")[0]
     
-        for i in range(len(self.symbols)):
+        for i in range(len(p.stocks)):
             label = DataPointLabel(component=plot, data_point=(x[i], y[i]),
                               label_position="bottom right",
                               padding=4,
@@ -178,6 +183,17 @@ class PortfolioModel(HasTraits):
             tool = DataLabelTool(label, drag_button="left", auto_arrow_root=True)
             label.tools.append(tool)
 
+        stockplt.tools.append(ScatterInspector(stockplt, selection_mode="toggle",
+                                          persistent_hover=False))
+
+        scatinsp = ScatterInspectorOverlay(stockplt,
+                hover_color = "red",
+                hover_marker_size = 8,
+                hover_outline_color = (0.7, 0.7, 0.7, 0.5),
+                hover_line_width = 1)
+
+        stockplt.overlays.append(scatinsp)
+
         # Tweak some of the plot properties
         plot.padding = 50
         stockplt.value_range.low=-0.3
@@ -192,15 +208,12 @@ class PortfolioModel(HasTraits):
 
 
 def save_plot(plot, filename, width, height):
-    print "plot outer bounds:", plot.outer_bounds
     plt_bounds = plot.outer_bounds
-    #plot.outer_bounds = [width, height]
     plot.do_layout(force=True)
     gc = PlotGraphicsContext(plt_bounds, dpi=72)
     gc.render_component(plot)
     gc.save(filename)
     print "Plot saved to: ", filename
-
 
 
 if __name__ == "__main__":
