@@ -52,7 +52,7 @@ def align_dates(olddates, olddata, newdates):
 class Stock(object):
     
     def __init__(self, symbol, startdate="1995-1-1",
-        enddate="2003-7-31", dbfilename='data/indexes.db', bench='^GSPC', rfr=0.015):
+        enddate="2011-7-31", dbfilename='data/stocks.db', bench='^GSPC', rfr=0.015):
         """ Stock object with some methods to call metrics functions to pre-
             populate some attributes, as well as methods to impute to a given
             datearray.
