@@ -76,7 +76,7 @@ class Portfolio(object):
                        weights = "equal",
                        startdate="2004-1-1",
                        enddate="2011-8-12",
-                       dbfilename="data/indexes.db"):
+                       dbfilename="data/stocks.db"):
         
         symbols.sort() #TODO: is this advisable?
         self.symbols = symbols
