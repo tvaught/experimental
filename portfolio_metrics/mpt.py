@@ -150,8 +150,9 @@ class Portfolio(object):
         self.stocks = {}
 
         # Get stock data:
+        print "Adding: ",
         for symbol in symbols:
-            print "Adding: ", symbol,
+            print symbol,
             s = Stock(symbol, startdate, enddate, self.dbfilename)
 
             # Only add it to the portfolio if it has data
@@ -187,8 +188,9 @@ class Portfolio(object):
         s = self.stocks
         
         # Find shortest stock array length.
+        print "\nLeveling: ",
         for symb in symbs:
-            print "leveling: ", symb
+            print symb,
             if latest_start_date < s[symb].stock_data['date'][0]:
                 latest_start_date = s[symb].stock_data['date'][0]
                 latest_start_symb = symb
@@ -382,7 +384,7 @@ class Portfolio(object):
         variance = round(result[0],3)
         ret = round(result[1]*100.,3)
         
-        print("Optimization completed in [ %s ] iterations." % count)
+        print("Optimization completed in [ %s ] iterations." % count),
         print("Ending weights:\n%s\n" % self.port_opt.weights)
         print("Optimized Variance: %s and Portfolio Return: %s%%" % (variance, ret))
         

@@ -13,13 +13,14 @@ import numpy as np
 
 # Enthought library imports
 from enable.api import Component, ComponentEditor
+from enable.tools.hover_tool import HoverTool
 from traits.api import HasTraits, Instance, List, Str, Tuple, Button
 from traitsui.api import Item, Group, View, SetEditor
 
 # Chaco imports
 from chaco.api import (ArrayPlotData, Plot, Label, PlotGraphicsContext,
-                      DataRange1D, ArrayDataSource)
-from chaco.tools.api import PanTool, ZoomTool, DataLabelTool
+                      DataRange1D, ArrayDataSource, ScatterInspectorOverlay)
+from chaco.tools.api import PanTool, ZoomTool, DataLabelTool, ScatterInspector
 
 # Local imports
 from data_point_label import DataPointLabel
@@ -143,9 +144,8 @@ class PortfolioModel(HasTraits):
     def _create_plot_component(self):
 
         x, y = self.get_stock_data()
-        print x,y
         efx, efy = self.get_ef_data()
-        print efx,efy
+
         p = self.portfolio
         symbs = p.stocks.keys()
 
@@ -182,6 +182,17 @@ class PortfolioModel(HasTraits):
         
             tool = DataLabelTool(label, drag_button="left", auto_arrow_root=True)
             label.tools.append(tool)
+
+        stockplt.tools.append(ScatterInspector(stockplt, selection_mode="toggle",
+                                          persistent_hover=False))
+
+        scatinsp = ScatterInspectorOverlay(stockplt,
+                hover_color = "red",
+                hover_marker_size = 8,
+                hover_outline_color = (0.7, 0.7, 0.7, 0.5),
+                hover_line_width = 1)
+
+        stockplt.overlays.append(scatinsp)
 
         # Tweak some of the plot properties
         plot.padding = 50
