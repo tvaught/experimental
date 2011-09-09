@@ -13,13 +13,12 @@ import numpy as np
 
 # Enthought library imports
 from enable.api import Component, ComponentEditor
-from enable.tools.hover_tool import HoverTool
-from traits.api import HasTraits, Instance, List, Str, Tuple, Button
+from traits.api import HasTraits, Instance, List, Str, Button
 from traitsui.api import Item, Group, View, SetEditor
 
 # Chaco imports
-from chaco.api import (ArrayPlotData, Plot, Label, PlotGraphicsContext,
-                      DataRange1D, ArrayDataSource, ScatterInspectorOverlay)
+from chaco.api import (ArrayPlotData, Plot, PlotGraphicsContext,
+                      ScatterInspectorOverlay, LabelAxis, jet)
 from chaco.tools.api import PanTool, ZoomTool, DataLabelTool, ScatterInspector
 
 # Local imports
@@ -29,13 +28,15 @@ import mpt
 import price_utils
 
 db = "data/stocks.db"
+
 # TODO: Get rid of "tolist" requirement
 symbols = price_utils.load_symbols_from_table(dbfilename=db)['symbol'].tolist()
 
 # Some other ways to do symbols ...
-#symbols = ["CSCO", "AAPL", "IBM",  "MSFT", "GE", "WFC", "RIG", "T", "AA", "CAT"]
+#init_symbols = ["CSCO", "AAPL", "IBM",  "MSFT", "GE", "WFC", "RIG", "T", "AA", "CAT"]
 init_symbols = ["AAPL", "CSCO", "EOG", "YUM", "AA", "BA", "COP"]
-#symbols = "data/SP500.csv"
+#init_symbols = "data/SP500.csv"
+init_symbols.sort()
 
 class PortfolioModel(HasTraits):
     
@@ -48,15 +49,23 @@ class PortfolioModel(HasTraits):
     dbfilename = Str(db)
     portfolio = Instance(mpt.Portfolio)
     plot = Instance(Component)
+    contourplot = Instance(Component)
+
     recalc_button = Button(label='Recalculate')
     save_plot_button = Button(label='Save Plot')
     
     traits_view = View(
                     Group(
-                    
+                        Group(
                         Item('plot',
                              editor=ComponentEditor(size=(600,380)),
                              show_label=False),
+                        Item('contourplot',
+                             editor=ComponentEditor(size=(600,380)),
+                             show_label=False),
+                        orientation="vertical",
+                        show_labels=False
+                        ),
                         Group(
                             Item('symbols', style="simple"),
                             Group(
@@ -65,7 +74,7 @@ class PortfolioModel(HasTraits):
                                 orientation="vertical"),
                             orientation="horizontal",
                             show_labels=False),
-                        orientation="vertical",
+                        orientation="horizontal",
                         show_labels=False
                         ),
                     resizable=True,
@@ -76,11 +85,15 @@ class PortfolioModel(HasTraits):
         self.symbols.sort()
         super(PortfolioModel, self).__init__(*args, **kw)
         self.plot = self._create_plot_component()
+        self.contourplot = self._create_contourplot_component()
 
     def _recalc_button_fired(self, event):
+        self.symbols.sort()
         self.plot = self._create_plot_component()
+        self.contourplot = self._create_contourplot_component()
         #self.plot.invalidate_draw()
         self.plot.request_redraw()
+        self.contourplot.request_redraw()
 
     def _save_plot_button_fired(self, event):
         save_plot(pm.plot, "chaco_ef.png", 400,300)
@@ -91,14 +104,14 @@ class PortfolioModel(HasTraits):
     def get_stock_data(self):
         
         self.portfolio = p = mpt.Portfolio(symbols=self.symbols,
-                                 startdate="1996-07-1", enddate="2004-12-31",
+                                 startdate="2000-07-1", enddate="2005-12-31",
                                  dbfilename=db)
                                  
         # Assemble and report pre-optimized portfolio data
         x = []
         y = []
 
-        for symbol in p.stocks:
+        for symbol in p.symbols:
             stk = p.stocks[symbol]
             x.append(stk.annual_volatility)
             y.append(stk.annualized_adjusted_return)
@@ -116,12 +129,10 @@ class PortfolioModel(HasTraits):
         rtstep = 0.2
         tdy = TRADING_DAYS_PER_YEAR
         rtrange = np.arange(rt0/tdy, rtn/tdy, rtstep/tdy)
-    
-        stps = float(len(rtrange))
-        count = 1.0
-    
+
         efx = []
         efy = []
+        allocations = {}
         
         p = self.portfolio
     
@@ -131,23 +142,135 @@ class PortfolioModel(HasTraits):
             py = p.port_opt.portfolio_return
             efx.append(px)
             efy.append(py)
+            # convert to annual returns in %
+            allocations[round(rt * 100, 2)] = p.port_opt.weights
         
             # reset the optimization
             p.port_opt = None
-        
-            print(100.0*count/stps),
-            count+=1.0
-    
-        return efx, efy
+
+        # cache the results
+        self.efx = efx
+        self.efy = efy
+        self.allocations = allocations
+
+        return efx, efy, allocations
+
+    def _create_barplot_component(self):
+        """ Currently not used -- will eventually go away
+        """
+        if not hasattr(self, "efx"):
+            a = self.get_ef_data()[2]
+        else:
+            a = self.allocations
+
+        rts = a.keys()
+        rts.sort()
+
+        pd = ArrayPlotData(x=rts)
+
+        symbs = a[rts[0]].keys()
+        symbs.sort()
+
+        symb_data = {}
+
+        # "Transpose" symbols' weights to get vectors of weights for each symbol
+        for symb in symbs:
+            symb_data[symb] = [a[rt][symb] for rt in rts]
+            pd.set_data(symb, symb_data[symb])
+
+        barplot = Plot(pd)
+
+        for symb in symbs:
+            barplot.plot(('x', symb), type='bar', bar_width=0.05, color='auto')
+
+        # set the plot's value range to 0, otherwise it may pad too much
+        barplot.value_range.low = 0
+
+        #replace the index values with some nicer labels
+        label_axis = LabelAxis(barplot, orientation='bottom',
+                               title='Rates',
+                               positions = range(len(rts)),
+                               labels = [str(rt) for rt in rts],
+                               small_haxis_style=True)
+
+        barplot.underlays.remove(barplot.index_axis)
+        barplot.index_axis = label_axis
+        barplot.underlays.append(label_axis)
+
+        return barplot
+
+    def _create_contourplot_component(self):
+        """
+
+        """
+
+        if not hasattr(self, "efx"):
+            a = self.get_ef_data()[2]
+        else:
+            a = self.allocations
+
+        rts = a.keys()
+        rts.sort()
+        rts = np.array(rts)
+
+        cpd = ArrayPlotData(x=rts)
+
+        symbs = a[rts[0]].keys()
+        symbs.sort()
+
+        # "Transpose" symbols' weights to get vectors of weights for each symbol
+        symb_data = np.array([[a[rt][symb] for rt in rts] for symb in symbs])
+
+        # Create a scalar field to contour
+        xs = np.linspace(rts[0], rts[-1], len(rts))
+        ys = np.linspace(0.0, 1.0, 100)
+        x, y = np.meshgrid(xs,ys)
+
+        # TODO: a complicated formula to hack a contour plot into a stacked area plot...
+
+        offset = np.zeros(rts.shape)
+        symb_bounds = []
+
+        for row in symb_data:
+            lb = offset
+            ub = row + offset
+            symb_bounds.append(zip(lb,ub))
+            offset = ub
+
+        symb_bounds = np.array(symb_bounds)
+
+        zvals = range(0,100)
+
+        z = np.ones(x.shape)
+
+        for i in range(len(symb_bounds)):
+            for j in range(len(symb_bounds[i])):
+                lmsk = y[:,j]>=symb_bounds[i,j,0]
+                umsk = y[:,j]<symb_bounds[i,j,1]
+                msk = lmsk & umsk
+                z[msk,j] = zvals[i]
+
+        # Create a plot data object and give it this data
+        cpd = ArrayPlotData()
+        cpd.set_data("stacks", z)
+
+        # Create a contour polygon plot of the data
+        cplot = Plot(cpd, title="Allocations")
+        cplot.contour_plot("stacks",
+                      type="poly",
+                      poly_cmap=jet,
+                      xbounds=(xs[0], xs[-1]),
+                      ybounds=(ys[0], ys[-1]))
+        return cplot
 
 
     def _create_plot_component(self):
 
         x, y = self.get_stock_data()
-        efx, efy = self.get_ef_data()
+        efx, efy, allocations = self.get_ef_data()
 
         p = self.portfolio
-        symbs = p.stocks.keys()
+        symbs = p.symbols
 
         pd = ArrayPlotData(x=x, y=y, efx=efx, efy=efy)
     

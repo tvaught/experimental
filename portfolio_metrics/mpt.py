@@ -184,7 +184,7 @@ class Portfolio(object):
 
         # Start with a very early date.
         latest_start_date = np.datetime64("1800-1-1")
-        symbs = self.stocks.keys()
+        symbs = self.symbols
         s = self.stocks
         
         # Find shortest stock array length.
@@ -197,8 +197,8 @@ class Portfolio(object):
                 
         # Assume symbol with latest start is best choice to impute
         # other stock data toward.
-        for stk in s:
-            s[stk].impute_to(s[latest_start_symb].stock_data['date'])
+        for symb in symbs:
+            s[symb].impute_to(s[latest_start_symb].stock_data['date'])
 
         return
         
@@ -216,8 +216,8 @@ class Portfolio(object):
         
         port_return = 0.0
         
-        for symb, stk_obj in self.stocks.iteritems():
-            port_return += (stk_obj.annualized_adjusted_return * self.weights[symb])
+        for symbol in self.symbols:
+            port_return += (self.stocks[symbol].annualized_adjusted_return * self.weights[symbol])
             
         self.portfolio_return = port_return
             
@@ -384,9 +384,9 @@ class Portfolio(object):
         variance = round(result[0],3)
         ret = round(result[1]*100.,3)
         
-        print("Optimization completed in [ %s ] iterations." % count),
-        print("Ending weights:\n%s\n" % self.port_opt.weights)
-        print("Optimized Variance: %s and Portfolio Return: %s%%" % (variance, ret))
+        print("Optimization completed in [ %s ] iterations." % count)
+        #print("Ending weights:\n%s\n" % self.port_opt.weights)
+        #print("Optimized Variance: %s and Portfolio Return: %s%%" % (variance, ret))
         
         
 # EOF ####################################################################
