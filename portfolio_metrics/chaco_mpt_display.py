@@ -18,7 +18,7 @@ from traitsui.api import Item, Group, View, SetEditor
 
 # Chaco imports
 from chaco.api import (ArrayPlotData, Plot, PlotGraphicsContext,
-                      ScatterInspectorOverlay, LabelAxis, jet)
+                      ScatterInspectorOverlay, LabelAxis, jet, VPlotContainer)
 from chaco.tools.api import PanTool, ZoomTool, DataLabelTool, ScatterInspector
 
 # Local imports
@@ -49,7 +49,6 @@ class PortfolioModel(HasTraits):
     dbfilename = Str(db)
     portfolio = Instance(mpt.Portfolio)
     plot = Instance(Component)
-    contourplot = Instance(Component)
 
     recalc_button = Button(label='Recalculate')
     save_plot_button = Button(label='Save Plot')
@@ -58,9 +57,6 @@ class PortfolioModel(HasTraits):
                     Group(
                         Group(
                         Item('plot',
-                             editor=ComponentEditor(size=(600,380)),
-                             show_label=False),
-                        Item('contourplot',
                              editor=ComponentEditor(size=(600,380)),
                              show_label=False),
                         orientation="vertical",
@@ -85,15 +81,12 @@ class PortfolioModel(HasTraits):
         self.symbols.sort()
         super(PortfolioModel, self).__init__(*args, **kw)
         self.plot = self._create_plot_component()
-        self.contourplot = self._create_contourplot_component()
 
     def _recalc_button_fired(self, event):
         self.symbols.sort()
-        self.plot = self._create_plot_component()
-        self.contourplot = self._create_contourplot_component()
+        self.plot = self._create_plot_component(recalc=True)
         #self.plot.invalidate_draw()
         self.plot.request_redraw()
-        self.contourplot.request_redraw()
 
     def _save_plot_button_fired(self, event):
         save_plot(pm.plot, "chaco_ef.png", 400,300)
@@ -155,56 +148,80 @@ class PortfolioModel(HasTraits):
 
         return efx, efy, allocations
 
-    def _create_barplot_component(self):
-        """ Currently not used -- will eventually go away
-        """
-        if not hasattr(self, "efx"):
-            a = self.get_ef_data()[2]
+
+    def _create_plot_component(self, recalc=False):
+
+        container = VPlotContainer()
+
+        ### Assemble the scatter plot of the Efficient Frontier
+        x, y = self.get_stock_data()
+        if not hasattr(self, "efx") or recalc:
+            efx, efy, allocations = self.get_ef_data()
         else:
-            a = self.allocations
+            efx = self.efx
+            efy = self.efy
 
-        rts = a.keys()
-        rts.sort()
+        p = self.portfolio
 
-        pd = ArrayPlotData(x=rts)
+        symbs = p.symbols
 
-        symbs = a[rts[0]].keys()
-        symbs.sort()
+        pd = ArrayPlotData(x=x, y=y, efx=efx, efy=efy)
 
-        symb_data = {}
+        # Create some plots of the data
+        plot = Plot(pd, title="Efficient Frontier")
 
-        # "Transpose" symbols' weights to get vectors of weights for each symbol
-        for symb in symbs:
-            symb_data[symb] = [a[rt][symb] for rt in rts]
-            pd.set_data(symb, symb_data[symb])
+        # Create a scatter plot (and keep a handle on it)
+        stockplt = plot.plot(("x", "y"), color=(0.0,0.0,0.5,0.25),
+                                         type="scatter",
+                                         marker="circle")[0]
 
-        barplot = Plot(pd)
+        efplt = plot.plot(("efx", "efy"), color=(0.0,0.5,0.0,0.25),
+                                          type="scatter",
+                                          marker="circle")[0]
+        efpltline = plot.plot(("efx", "efy"), color=(0.0,0.7,0.0,0.5),
+                                          type="line")[0]
 
-        for symb in symbs:
-            barplot.plot(('x', symb), type='bar', bar_width=0.05, color='auto')
+        for i in range(len(p.stocks)):
+            label = DataPointLabel(component=plot, data_point=(x[i], y[i]),
+                              label_position="bottom right",
+                              padding=4,
+                              bgcolor="transparent",
+                              border_visible=False,
+                              text=self.symbols[i],
+                              marker="circle",
+                              marker_color=(0.0,0.0,0.5,0.25),
+                              marker_line_color="blue",
+                              arrow_size=6.0,
+                              arrow_min_length=7.0)
 
-        # set the plot's value range to 0, otherwise it may pad too much
-        barplot.value_range.low = 0
+            plot.overlays.append(label)
 
-        #replace the index values with some nicer labels
-        label_axis = LabelAxis(barplot, orientation='bottom',
-                               title='Rates',
-                               positions = range(len(rts)),
-                               labels = [str(rt) for rt in rts],
-                               small_haxis_style=True)
+            tool = DataLabelTool(label, drag_button="left", auto_arrow_root=True)
+            label.tools.append(tool)
 
-        barplot.underlays.remove(barplot.index_axis)
-        barplot.index_axis = label_axis
-        barplot.underlays.append(label_axis)
+        stockplt.tools.append(ScatterInspector(stockplt, selection_mode="toggle",
+                                          persistent_hover=False))
 
-        return barplot
+        scatinsp = ScatterInspectorOverlay(stockplt,
+                hover_color = "red",
+                hover_marker_size = 8,
+                hover_outline_color = (0.7, 0.7, 0.7, 0.5),
+                hover_line_width = 1)
 
-    def _create_contourplot_component(self):
-        """
+        stockplt.overlays.append(scatinsp)
 
-        """
+        # Tweak some of the plot properties
+        plot.padding = 50
+        stockplt.value_range.low=-0.3
+        stockplt.value_range.high=0.7
+        stockplt.index_range.low=0.0
+        stockplt.index_range.high=0.8
+        # Attach some tools to the plot
+        plot.tools.append(PanTool(plot, drag_button="right"))
+        plot.overlays.append(ZoomTool(plot))
 
-        if not hasattr(self, "efx"):
+        #### Assemble the "stacked area" plot
+        if not hasattr(self, "efx") or recalc:
             a = self.get_ef_data()[2]
         else:
             a = self.allocations
@@ -261,73 +278,12 @@ class PortfolioModel(HasTraits):
                       poly_cmap=jet,
                       xbounds=(xs[0], xs[-1]),
                       ybounds=(ys[0], ys[-1]))
-        return cplot
 
+        cplot.padding = 50
 
-    def _create_plot_component(self):
-
-        x, y = self.get_stock_data()
-        efx, efy, allocations = self.get_ef_data()
-
-        p = self.portfolio
-        symbs = p.symbols
-
-        pd = ArrayPlotData(x=x, y=y, efx=efx, efy=efy)
-    
-        # Create some plots of the data
-        plot = Plot(pd, title="Efficient Frontier")
-        
-        # Create a scatter plot (and keep a handle on it)
-        stockplt = plot.plot(("x", "y"), color=(0.0,0.0,0.5,0.25),
-                                         type="scatter",
-                                         marker="circle")[0]
-    
-        efplt = plot.plot(("efx", "efy"), color=(0.0,0.5,0.0,0.25),
-                                          type="scatter",
-                                          marker="circle")[0]
-        efpltline = plot.plot(("efx", "efy"), color=(0.0,0.7,0.0,0.5),
-                                          type="line")[0]
-    
-        for i in range(len(p.stocks)):
-            label = DataPointLabel(component=plot, data_point=(x[i], y[i]),
-                              label_position="bottom right",
-                              padding=4,
-                              bgcolor="transparent",
-                              border_visible=False,
-                              text=self.symbols[i],
-                              marker="circle",
-                              marker_color=(0.0,0.0,0.5,0.25),
-                              marker_line_color="blue",
-                              arrow_size=6.0,
-                              arrow_min_length=7.0)
-                          
-            plot.overlays.append(label)
-        
-            tool = DataLabelTool(label, drag_button="left", auto_arrow_root=True)
-            label.tools.append(tool)
-
-        stockplt.tools.append(ScatterInspector(stockplt, selection_mode="toggle",
-                                          persistent_hover=False))
-
-        scatinsp = ScatterInspectorOverlay(stockplt,
-                hover_color = "red",
-                hover_marker_size = 8,
-                hover_outline_color = (0.7, 0.7, 0.7, 0.5),
-                hover_line_width = 1)
-
-        stockplt.overlays.append(scatinsp)
-
-        # Tweak some of the plot properties
-        plot.padding = 50
-        stockplt.value_range.low=-0.3
-        stockplt.value_range.high=0.7
-        stockplt.index_range.low=0.0
-        stockplt.index_range.high=0.8
-        # Attach some tools to the plot
-        plot.tools.append(PanTool(plot, drag_button="right"))
-        plot.overlays.append(ZoomTool(plot))
-
-        return plot
+        container.add(cplot)
+        container.add(plot)
+        return container
 
 
 def save_plot(plot, filename, width, height):
