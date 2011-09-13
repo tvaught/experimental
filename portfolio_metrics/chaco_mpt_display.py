@@ -14,7 +14,8 @@ import numpy as np
 # Enthought library imports
 from enable.api import Component, ComponentEditor
 from traits.api import HasTraits, Array, Instance, List, Str, Button
-from traitsui.api import Item, Group, View, SetEditor
+from traitsui.api import Item, Group, View, SetEditor, TabularEditor
+from traitsui.tabular_adapter import TabularAdapter
 
 # Chaco imports
 from chaco.api import (ArrayPlotData, Plot, PlotGraphicsContext,
@@ -38,6 +39,16 @@ init_symbols = ["AAPL", "CSCO", "EOG", "YUM", "AA", "BA", "COP"]
 #init_symbols = "data/SP500.csv"
 init_symbols.sort()
 
+class WeightsArrayAdapter(TabularAdapter):
+
+    columns = [('risk_tolerance', 0)]#, ('format', 1)]
+
+    font        = 'Arial 10'
+    alignment   = 'left'
+
+weights_tabular_editor = TabularEditor(adapter=WeightsArrayAdapter())
+
+
 class PortfolioModel(HasTraits):
     
     symbols = List(init_symbols, editor=SetEditor(values=symbols,
@@ -46,7 +57,7 @@ class PortfolioModel(HasTraits):
                                    right_column_title='Selected Symbols',
                                    )
                                   )
-    symbols2 = Array
+    weights = Array
 
     dbfilename = Str(db)
     portfolio = Instance(mpt.Portfolio)
@@ -65,7 +76,8 @@ class PortfolioModel(HasTraits):
                         show_labels=False
                         ),
                         Group(
-                            Item('symbols', style="simple"),
+                            Item('symbols', style="simple", resizable=True),
+                            Item('weights', editor=weights_tabular_editor, resizable=True),
                             Group(
                                 Item('recalc_button', show_label=False),
                                 Item('save_plot_button', show_label=False),
@@ -139,7 +151,7 @@ class PortfolioModel(HasTraits):
             efy.append(py)
             # convert to annual returns in %
             allocations[round(rt * 100, 2)] = p.port_opt.weights
-        
+
             # reset the optimization
             p.port_opt = None
 
@@ -245,6 +257,8 @@ class PortfolioModel(HasTraits):
 
         # "Transpose" symbols' weights to get vectors of weights for each symbol
         symb_data = np.array([[a[rt][symb] for rt in rts] for symb in symbs])
+
+        self.weights = symb_data[1]
 
         # Create a plot data object and give it this data
         bpd = ArrayPlotData()
