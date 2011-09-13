@@ -13,7 +13,7 @@ import numpy as np
 
 # Enthought library imports
 from enable.api import Component, ComponentEditor
-from traits.api import HasTraits, Instance, List, Str, Button
+from traits.api import HasTraits, Array, Instance, List, Str, Button
 from traitsui.api import Item, Group, View, SetEditor
 
 # Chaco imports
@@ -29,7 +29,7 @@ import price_utils
 
 db = "data/stocks.db"
 
-# TODO: Get rid of "tolist" requirement
+# TODO: Get rid of "tolist" requirement .. seems messy
 symbols = price_utils.load_symbols_from_table(dbfilename=db)['symbol'].tolist()
 
 # Some other ways to do symbols ...
@@ -46,6 +46,8 @@ class PortfolioModel(HasTraits):
                                    right_column_title='Selected Symbols',
                                    )
                                   )
+    symbols2 = Array
+
     dbfilename = Str(db)
     portfolio = Instance(mpt.Portfolio)
     plot = Instance(Component)
@@ -244,50 +246,31 @@ class PortfolioModel(HasTraits):
         # "Transpose" symbols' weights to get vectors of weights for each symbol
         symb_data = np.array([[a[rt][symb] for rt in rts] for symb in symbs])
 
-        # Create a scalar field to contour
-        xs = np.linspace(rts[0], rts[-1], len(rts))
-        ys = np.linspace(0.0, 1.0, 100)
-        x, y = np.meshgrid(xs,ys)
-
-        # TODO: a complicated formula to hack a contour plot into a stacked area plot...
-
-        offset = np.zeros(rts.shape)
-        symb_bounds = []
-
-        for row in symb_data:
-            lb = offset
-            ub = row + offset
-            symb_bounds.append(zip(lb,ub))
-            offset = ub
-
-        symb_bounds = np.array(symb_bounds)
-
-        zvals = range(0,100)
-
-        z = np.ones(x.shape)
-
-        for i in range(len(symb_bounds)):
-            for j in range(len(symb_bounds[i])):
-                lmsk = y[:,j]>=symb_bounds[i,j,0]
-                umsk = y[:,j]<symb_bounds[i,j,1]
-                msk = lmsk & umsk
-                z[msk,j] = zvals[i]
-
         # Create a plot data object and give it this data
-        cpd = ArrayPlotData()
-        cpd.set_data("stacks", z)
+        bpd = ArrayPlotData()
+        bpd.set_data("index", rts)
+        bpd.set_data("allocations", symb_data)
 
         # Create a contour polygon plot of the data
-        cplot = Plot(cpd, title="Allocations")
-        cplot.contour_plot("stacks",
-                      type="poly",
-                      poly_cmap=jet,
-                      xbounds=(xs[0], xs[-1]),
-                      ybounds=(ys[0], ys[-1]))
+        bplot = Plot(bpd, title="Allocations")
+        bplot.stacked_bar_plot(("index", "allocations"),
+                        color = [(1.0, 0.75, 0.5, 0.7),
+                                (1.0, 0.5, 0.0, 0.7),
+                                (1.0, 1.0, 0.6, 0.7),
+                                (1.0, 1.0, 0.2, 0.7),
+                                (0.7, 1.0, 0.55, 0.7),
+                                (0.2, 1.0, 0.0, 0.7),
+                                (0.65, 0.93, 1.0, 0.7),
+                                (0.1, 0.7, 1.0, 0.7),
+                                (0.8, 0.75, 1.0, 0.7),
+                                (0.4, 0.3, 1.0, 0.7),
+                                (1.0, 0.6, 0.75, 0.7),
+                                (0.9, 0.1, 0.2, 0.7)],
+                        outline_color = "lightgray")
 
-        cplot.padding = 50
+        bplot.padding = 50
 
-        container.add(cplot)
+        container.add(bplot)
         container.add(plot)
         return container
 
