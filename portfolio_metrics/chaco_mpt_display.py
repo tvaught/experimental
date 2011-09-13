@@ -171,14 +171,18 @@ class PortfolioModel(HasTraits):
         plot = Plot(pd, title="Efficient Frontier")
 
         # Create a scatter plot (and keep a handle on it)
-        stockplt = plot.plot(("x", "y"), color=(0.0,0.0,0.5,0.25),
+        stockplt = plot.plot(("x", "y"), color="transparent",
                                          type="scatter",
-                                         marker="circle")[0]
+                                         marker="dot",
+                                         marker_line_color="transparent",
+                                         marker_color="transparent",
+                                         marker_size=1)[0]
 
         efplt = plot.plot(("efx", "efy"), color=(0.0,0.5,0.0,0.25),
                                           type="scatter",
-                                          marker="circle")[0]
-        efpltline = plot.plot(("efx", "efy"), color=(0.0,0.7,0.0,0.5),
+                                          marker="circle",
+                                          marker_size=6)[0]
+        efpltline = plot.plot(("efx", "efy"), color=(0.1,0.4,0.1,0.7),
                                           type="line")[0]
 
         for i in range(len(p.stocks)):
@@ -190,9 +194,11 @@ class PortfolioModel(HasTraits):
                               text=self.symbols[i],
                               marker="circle",
                               marker_color=(0.0,0.0,0.5,0.25),
-                              marker_line_color="blue",
-                              arrow_size=6.0,
-                              arrow_min_length=7.0)
+                              marker_line_color="lightgray",
+                              marker_size=6,
+                              arrow_size=8.0,
+                              arrow_min_length=7.0,
+                              font_size=14)
 
             plot.overlays.append(label)
 
