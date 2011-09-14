@@ -13,13 +13,13 @@ import numpy as np
 
 # Enthought library imports
 from enable.api import Component, ComponentEditor
-from traits.api import HasTraits, Array, Instance, List, Str, Button
-from traitsui.api import Item, Group, View, SetEditor, TabularEditor
+from traits.api import HasTraits, Instance, List, Str, Button, Property, Int
+from traitsui.api import Item, Group, View, SetEditor, TabularEditor, ColorTrait
 from traitsui.tabular_adapter import TabularAdapter
 
 # Chaco imports
 from chaco.api import (ArrayPlotData, Plot, PlotGraphicsContext,
-                      ScatterInspectorOverlay, LabelAxis, jet, VPlotContainer)
+                      ScatterInspectorOverlay, VPlotContainer)
 from chaco.tools.api import PanTool, ZoomTool, DataLabelTool, ScatterInspector
 
 # Local imports
@@ -27,6 +27,19 @@ from data_point_label import DataPointLabel
 from metrics import TRADING_DAYS_PER_YEAR
 import mpt
 import price_utils
+
+COLORS = [(1.0, 0.75, 0.5, 0.7),
+            (1.0, 0.5, 0.0, 0.7),
+            (1.0, 1.0, 0.6, 0.7),
+            (1.0, 1.0, 0.2, 0.7),
+            (0.7, 1.0, 0.55, 0.7),
+            (0.2, 1.0, 0.0, 0.7),
+            (0.65, 0.93, 1.0, 0.7),
+            (0.1, 0.7, 1.0, 0.7),
+            (0.8, 0.75, 1.0, 0.7),
+            (0.4, 0.3, 1.0, 0.7),
+            (1.0, 0.6, 0.75, 0.7),
+            (0.9, 0.1, 0.2, 0.7)]
 
 db = "data/stocks.db"
 
@@ -39,14 +52,39 @@ init_symbols = ["AAPL", "CSCO", "EOG", "YUM", "AA", "BA", "COP"]
 #init_symbols = "data/SP500.csv"
 init_symbols.sort()
 
-class WeightsArrayAdapter(TabularAdapter):
+def color_tuple_to_int(rgb_tuple):
+    # TODO: This is a major hack to return a hex string so that the bg_color for the rows
+    # will work properly.
+    return "#"+"".join(map(chr, (int(x*255) for x in rgb_tuple))).encode('hex')
 
-    columns = [('risk_tolerance', 0)]#, ('format', 1)]
+class Symbol(HasTraits):
+    symbol = Str
+    color = ColorTrait
+    methods = Str
 
+    def __repr__(self):
+        return "Symbol: %s, Color: %s" % (self.symbol, self.color)
+
+class SymbolListAdapter(TabularAdapter):
+
+    columns = [('Selected Symbols', 'symbol')]
+    column_widths = [30]
     font        = 'Arial 10'
     alignment   = 'left'
 
-weights_tabular_editor = TabularEditor(adapter=WeightsArrayAdapter())
+    Symbol_symbol_bg_color = Property #Color(color_tuple_to_int((0.5, 0.2, 0.2, 0.5)[:3]))
+
+    def _get_Symbol_symbol_bg_color(self):
+        # background colors are specified in actual int (from hex)
+        # values, so we have to go through this...
+        if isinstance(self.item.color, tuple):
+            return color_tuple_to_int(self.item.color[:3])
+        else:
+            return None
+
+
+symbols_tabular_editor = TabularEditor(adapter=SymbolListAdapter(),
+                                    operations=['move'])
 
 
 class PortfolioModel(HasTraits):
@@ -57,7 +95,7 @@ class PortfolioModel(HasTraits):
                                    right_column_title='Selected Symbols',
                                    )
                                   )
-    weights = Array
+    symbols2 = List(Instance(Symbol))
 
     dbfilename = Str(db)
     portfolio = Instance(mpt.Portfolio)
@@ -70,14 +108,15 @@ class PortfolioModel(HasTraits):
                     Group(
                         Group(
                         Item('plot',
-                             editor=ComponentEditor(size=(600,380)),
+                             editor=ComponentEditor(size=(400,400)),
                              show_label=False),
                         orientation="vertical",
                         show_labels=False
                         ),
                         Group(
                             Item('symbols', style="simple", resizable=True),
-                            Item('weights', editor=weights_tabular_editor, resizable=True),
+                            Item('symbols2', editor=symbols_tabular_editor,
+                                 width=20, resizable=True),
                             Group(
                                 Item('recalc_button', show_label=False),
                                 Item('save_plot_button', show_label=False),
@@ -88,12 +127,13 @@ class PortfolioModel(HasTraits):
                         show_labels=False
                         ),
                     resizable=True,
-                    title="Markowitz Mean-Variance View (MPT)"
-                    )
+                    title="Markowitz Mean-Variance View (MPT)",
+                    width=0.6)
 
     def __init__(self, *args, **kw):
         self.symbols.sort()
         super(PortfolioModel, self).__init__(*args, **kw)
+        #self.symbols2 = [Symbol(symbol=s) for s in init_symbols]
         self.plot = self._create_plot_component()
 
     def _recalc_button_fired(self, event):
@@ -104,6 +144,9 @@ class PortfolioModel(HasTraits):
 
     def _save_plot_button_fired(self, event):
         save_plot(pm.plot, "chaco_ef.png", 400,300)
+
+    def _symbols_changed(self, event):
+        self.symbols2 = [Symbol(symbol=s) for s in self.symbols]
 
     def _plot_default(self):
         return self._create_plot_component()
@@ -258,7 +301,7 @@ class PortfolioModel(HasTraits):
         # "Transpose" symbols' weights to get vectors of weights for each symbol
         symb_data = np.array([[a[rt][symb] for rt in rts] for symb in symbs])
 
-        self.weights = symb_data[1]
+        self.symbols2 = [Symbol(symbol=symbs[i], color=COLORS[i]) for i in range(len(symbs))]
 
         # Create a plot data object and give it this data
         bpd = ArrayPlotData()
@@ -268,22 +311,11 @@ class PortfolioModel(HasTraits):
         # Create a contour polygon plot of the data
         bplot = Plot(bpd, title="Allocations")
         bplot.stacked_bar_plot(("index", "allocations"),
-                        color = [(1.0, 0.75, 0.5, 0.7),
-                                (1.0, 0.5, 0.0, 0.7),
-                                (1.0, 1.0, 0.6, 0.7),
-                                (1.0, 1.0, 0.2, 0.7),
-                                (0.7, 1.0, 0.55, 0.7),
-                                (0.2, 1.0, 0.0, 0.7),
-                                (0.65, 0.93, 1.0, 0.7),
-                                (0.1, 0.7, 1.0, 0.7),
-                                (0.8, 0.75, 1.0, 0.7),
-                                (0.4, 0.3, 1.0, 0.7),
-                                (1.0, 0.6, 0.75, 0.7),
-                                (0.9, 0.1, 0.2, 0.7)],
+                        color = COLORS,
                         outline_color = "lightgray")
 
         bplot.padding = 50
-
+        bplot.legend.visible = True
         container.add(bplot)
         container.add(plot)
         return container
