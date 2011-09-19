@@ -8,12 +8,16 @@ Copyright (c) 2011 Vaught Management, LLC.
 License: BSD
 """
 
+# Note: disable the following 2 lines if you want to use the wxWidgets GUI backend.
+from traits.etsconfig.etsconfig import ETSConfig
+ETSConfig.toolkit = "qt4"
+
 # Major library imports
 import numpy as np
 
 # Enthought library imports
 from enable.api import Component, ComponentEditor
-from traits.api import HasTraits, Instance, List, Str, Button, Property, Int
+from traits.api import HasTraits, Instance, List, Str, Button, Property, File
 from traitsui.api import Item, Group, View, SetEditor, TabularEditor, ColorTrait
 from traitsui.tabular_adapter import TabularAdapter
 
@@ -27,28 +31,28 @@ from data_point_label import DataPointLabel
 from metrics import TRADING_DAYS_PER_YEAR
 import mpt
 import price_utils
+from stock_plot import StockPlot
 
-COLORS = [(1.0, 0.75, 0.5, 0.7),
-            (1.0, 0.5, 0.0, 0.7),
-            (1.0, 1.0, 0.6, 0.7),
-            (1.0, 1.0, 0.2, 0.7),
-            (0.7, 1.0, 0.55, 0.7),
-            (0.2, 1.0, 0.0, 0.7),
-            (0.65, 0.93, 1.0, 0.7),
-            (0.1, 0.7, 1.0, 0.7),
-            (0.8, 0.75, 1.0, 0.7),
-            (0.4, 0.3, 1.0, 0.7),
-            (1.0, 0.6, 0.75, 0.7),
-            (0.9, 0.1, 0.2, 0.7)]
+COLORS = [(0.8, 0.5, 0.3, 0.7),
+            (0.8, 0.1, 0.0, 0.7),
+            (0.8, 0.8, 0.4, 0.7),
+            (0.8, 0.8, 0.0, 0.7),
+            (0.5, 0.8, 0.3, 0.7),
+            (0.1, 0.8, 0.0, 0.7),
+            (0.4, 0.7, 0.8, 0.7),
+            (0.0, 0.5, 0.8, 0.7),
+            (0.6, 0.5, 0.8, 0.7),
+            (0.2, 0.1, 0.8, 0.7),
+            (0.8, 0.4, 0.5, 0.7),
+            (0.7, 0.0, 0.1, 0.7)]
 
 db = "data/stocks.db"
-
 # TODO: Get rid of "tolist" requirement .. seems messy
-symbols = price_utils.load_symbols_from_table(dbfilename=db)['symbol'].tolist()
+all_symbols = price_utils.load_symbols_from_table(dbfilename=db)['symbol'].tolist()
 
 # Some other ways to do symbols ...
 #init_symbols = ["CSCO", "AAPL", "IBM",  "MSFT", "GE", "WFC", "RIG", "T", "AA", "CAT"]
-init_symbols = ["AAPL", "CSCO", "EOG", "YUM", "AA", "BA", "COP"]
+init_symbols = ["AAPL", "GOOG", "EOG", "YUM", "AA", "BA", "COP"]
 #init_symbols = "data/SP500.csv"
 init_symbols.sort()
 
@@ -60,19 +64,21 @@ def color_tuple_to_int(rgb_tuple):
 class Symbol(HasTraits):
     symbol = Str
     color = ColorTrait
-    methods = Str
+    #methods = Str
 
     def __repr__(self):
         return "Symbol: %s, Color: %s" % (self.symbol, self.color)
 
+
+
 class SymbolListAdapter(TabularAdapter):
 
     columns = [('Selected Symbols', 'symbol')]
-    column_widths = [30]
+    column_widths = [10]
     font        = 'Arial 10'
     alignment   = 'left'
 
-    Symbol_symbol_bg_color = Property #Color(color_tuple_to_int((0.5, 0.2, 0.2, 0.5)[:3]))
+    Symbol_symbol_bg_color = Property
 
     def _get_Symbol_symbol_bg_color(self):
         # background colors are specified in actual int (from hex)
@@ -82,60 +88,96 @@ class SymbolListAdapter(TabularAdapter):
         else:
             return None
 
+class SymbolPoolAdapter(TabularAdapter):
+
+    columns = [('Symbols', 'symbol')]
+    column_widths = [30]
+    font        = 'Arial 10'
+    alignment   = 'left'
+
 
 symbols_tabular_editor = TabularEditor(adapter=SymbolListAdapter(),
-                                    operations=['move'])
-
+                                    operations=['move'], drag_move=True)
+symbol_pool_tabular_editor = TabularEditor(adapter=SymbolPoolAdapter(),
+                                    operations=['move'], drag_move=True,
+                                    )
 
 class PortfolioModel(HasTraits):
-    
-    symbols = List(init_symbols, editor=SetEditor(values=symbols,
-                                   can_move_all=True,
-                                   left_column_title='Symbols',
-                                   right_column_title='Selected Symbols',
-                                   )
-                                  )
-    symbols2 = List(Instance(Symbol))
 
-    dbfilename = Str(db)
+
+    symbols = List(init_symbols)
+    # Test this for now...
+    symbols2 = List(Instance(Symbol))
+    symbol_pool = List(Instance(Symbol))
+
+    # Arbitrary date range for pulling asset data
+    startdate = Str("2000-07-1")
+    enddate = Str("2005-12-31")
+
+    dbfilename = File("data/stocks.db")
     portfolio = Instance(mpt.Portfolio)
     plot = Instance(Component)
 
     recalc_button = Button(label='Recalculate')
     save_plot_button = Button(label='Save Plot')
+
+    symbol_pool_item = Item('symbol_pool', editor=symbol_pool_tabular_editor,
+                                 width=20, resizable=True)
+
+    symbols_item = Item('symbols', style="simple", resizable=True,
+                        editor=SetEditor(values=all_symbols,
+                        can_move_all=True,
+                        left_column_title='Symbols',
+                        right_column_title='Selected Symbols'),
+                        width=0.1)
     
     traits_view = View(
                     Group(
                         Group(
-                        Item('plot',
-                             editor=ComponentEditor(size=(400,400)),
-                             show_label=False),
-                        orientation="vertical",
-                        show_labels=False
-                        ),
-                        Group(
-                            Item('symbols', style="simple", resizable=True),
+                            Item('dbfilename',
+                                 label='Database File',
+                                 width=-20),
+                            Item('startdate',
+                                 label='Start Date',
+                                 width=-20),
+                            Item('enddate',
+                                 label='End Date',
+                                 width=-20),
+                            Item('recalc_button', show_label=False,
+                                 width=-20),
+                            Item('save_plot_button', show_label=False,
+                                 width=-20),
+                            symbols_item,
+                            #symbol_pool_item,
                             Item('symbols2', editor=symbols_tabular_editor,
-                                 width=20, resizable=True),
-                            Group(
-                                Item('recalc_button', show_label=False),
-                                Item('save_plot_button', show_label=False),
-                                orientation="vertical"),
-                            orientation="horizontal",
-                            show_labels=False),
+                                 height=0.2, springy=True),
+                            orientation="vertical",
+                            springy=True),
+                        Group(
+                            Item('plot',
+                                editor=ComponentEditor(size=(400,400)),
+                                show_label=False),
+                            orientation="vertical",
+                            show_labels=False
+                            ),
                         orientation="horizontal",
-                        show_labels=False
-                        ),
+                        show_labels=False),
                     resizable=True,
                     title="Markowitz Mean-Variance View (MPT)",
-                    width=0.6)
+                    width=0.9,
+                    height=0.9)
 
     def __init__(self, *args, **kw):
         self.symbols.sort()
         super(PortfolioModel, self).__init__(*args, **kw)
+        symbol_list = price_utils.load_symbols_from_table(dbfilename=self.dbfilename)['symbol'].tolist()
+        self.symbol_pool = [Symbol(symbol=symb) for symb in symbol_list]
         #self.symbols2 = [Symbol(symbol=s) for s in init_symbols]
         self.plot = self._create_plot_component()
 
+    # #############################
+    # Methods triggered by trait events
+    # #############################
     def _recalc_button_fired(self, event):
         self.symbols.sort()
         self.plot = self._create_plot_component(recalc=True)
@@ -144,6 +186,23 @@ class PortfolioModel(HasTraits):
 
     def _save_plot_button_fired(self, event):
         save_plot(pm.plot, "chaco_ef.png", 400,300)
+
+    def _dbfilename_changed(self, event):
+        #reload symbols
+        # TODO: what's the right way to do this?
+        symbol_list = price_utils.load_symbols_from_table(dbfilename=self.dbfilename)['symbol'].tolist()
+        #print self.dbfilename, symbol_list
+        if len(symbol_list) > 2:
+            #print "New symbols: ", symbol_list
+            self.trait_view('symbols_item').editor.values = symbol_list
+            #print "Symbol list setting: ", self.trait_view('symbols_item').editor.values
+
+            self.trait_view('traits_view').updated = True
+
+            self.symbols = symbol_list[:2]
+            #self.trait_view( 'symbols' ).updated = True
+        return
+
 
     def _symbols_changed(self, event):
         self.symbols2 = [Symbol(symbol=s) for s in self.symbols]
@@ -154,7 +213,7 @@ class PortfolioModel(HasTraits):
     def get_stock_data(self):
         
         self.portfolio = p = mpt.Portfolio(symbols=self.symbols,
-                                 startdate="2000-07-1", enddate="2005-12-31",
+                                 startdate=self.startdate, enddate=self.enddate,
                                  dbfilename=db)
                                  
         # Assemble and report pre-optimized portfolio data
@@ -293,8 +352,6 @@ class PortfolioModel(HasTraits):
         rts.sort()
         rts = np.array(rts)
 
-        cpd = ArrayPlotData(x=rts)
-
         symbs = a[rts[0]].keys()
         symbs.sort()
 
@@ -312,12 +369,24 @@ class PortfolioModel(HasTraits):
         bplot = Plot(bpd, title="Allocations")
         bplot.stacked_bar_plot(("index", "allocations"),
                         color = COLORS,
-                        outline_color = "lightgray")
+                        outline_color = "gray")
 
         bplot.padding = 50
         bplot.legend.visible = True
+
+        # Add a plot of the stocks
+        stock_obj_list = [p.stocks[symb] for symb in symbs]
+        
+        #for itm in stock_obj_list:
+            #itm.print_traits()
+            #print "Has Cache?:", itm.stock_data_cache is not None
+
+        splot = StockPlot(stocks=[p.stocks[symb] for symb in symbs], colors=COLORS).plot
+
         container.add(bplot)
         container.add(plot)
+        container.add(splot)
+        
         return container
 
 

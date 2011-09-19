@@ -63,6 +63,8 @@ class Stock(object):
         self.startdate = startdate
         self.enddate = enddate
         self.rfr = rfr
+        self.stock_data_cache = None
+        self.bench_data_cache = None
         
         self.bench_data = price_utils.load_from_db(bench,
                                         self.startdate,
@@ -84,7 +86,7 @@ class Stock(object):
             self.update_metrics()
 
 
-    def impute_to(self, dts):
+    def impute_to(self, dts, cache_originals=False):
         """ Method impute stock data to match given dates.
 
             Note: this only works when _shortening_ the data and filling in
@@ -104,6 +106,10 @@ class Stock(object):
 
             srecs = zip(ssymb, dts, *tuple(sdata))
             brecs = zip(bsymb, dts, *tuple(bdata))
+
+            if cache_originals:
+                self.stock_data_cache = self.stock_data
+                self.bench_data_cache = self.bench_data
 
             self.stock_data = np.array(srecs, dtype=price_schema)
             self.bench_data = np.array(brecs, dtype=price_schema)
@@ -188,7 +194,7 @@ class Portfolio(object):
         s = self.stocks
         
         # Find shortest stock array length.
-        print "\nLeveling: ",
+        #print "\nLeveling: ",
         for symb in symbs:
             print symb,
             if latest_start_date < s[symb].stock_data['date'][0]:
@@ -198,7 +204,7 @@ class Portfolio(object):
         # Assume symbol with latest start is best choice to impute
         # other stock data toward.
         for symb in symbs:
-            s[symb].impute_to(s[latest_start_symb].stock_data['date'])
+            s[symb].impute_to(s[latest_start_symb].stock_data['date'], cache_originals=True)
 
         return
         
