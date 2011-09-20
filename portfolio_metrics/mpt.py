@@ -302,7 +302,7 @@ class Portfolio(object):
             This also uses Sharpe's procedures for calculating the optimal
             buy/sell ratio for a two-stock swap.
             
-            TODO: Note: We currently allow leverage -- no limits on shorting
+            TODO: Note: This method currently allows leverage -- no limits on shorting
                 or lower and upper bounds of ownership.
         """
         
@@ -348,8 +348,9 @@ class Portfolio(object):
         amat = k0/(2*k1)
         a = amat[0,0]
         
-        # a change of weights according to 'a' will yeild a utility
-        #     change as indicated below:
+        # a change of weights according to 'a' will yield a utility
+        # change as indicated below.  This is not currently returned or used anywhere,
+        # but it's calculated here for potential future use.
         cu = k0*a - k1*(a**2)
         
         symb_sell = p2.symbols[isell]
