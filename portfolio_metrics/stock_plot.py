@@ -26,7 +26,14 @@ title="Simple line plot"
 # # Demo class that is used by the demo.py application.
 #===============================================================================
 class StockPlot(Plot):
+    """ Object to plot stock baskets relative to one another.
+    Parameters:
+        stocks: List of mpt.Stock objects
+        colors: List of Colors
+    Returns:
+        Chaco component plotting stocks together
 
+    """
     stocks = List(Instance(Stock))
     colors = List()
     plot = Instance(Component)
@@ -121,7 +128,7 @@ class StockPlot(Plot):
         del(plot.underlays[-4])
 
         plot.overlays.append(bottom_axis)
-
+        plot.legend.visible = True
         return plot
 
     def _plot_default(self):

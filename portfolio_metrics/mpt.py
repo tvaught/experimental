@@ -9,7 +9,6 @@ License: BSD
 """
 
 # Standard library imports ####
-import datetime
 import copy
 
 # Major library imports ####
@@ -18,7 +17,7 @@ from scipy.interpolate import interp1d
 
 # Local imports ####
 from metrics import (annualized_adjusted_rate, beta_bb, 
-    expected_return, rate_array, volatility, TRADING_DAYS_PER_YEAR)
+    expected_return, rate_array, volatility)
 
 import price_utils
 
