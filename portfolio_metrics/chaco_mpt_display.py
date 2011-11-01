@@ -152,7 +152,8 @@ class PortfolioModel(HasTraits):
                             Item('symbols2', editor=symbols_tabular_editor,
                                  height=0.2, springy=True),
                             orientation="vertical",
-                            springy=True),
+                            springy=True,
+                            id='leftpane'),
                         Group(
                             Item('plot',
                                 editor=ComponentEditor(size=(400,400)),
