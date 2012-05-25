@@ -1,4 +1,3 @@
-
 import time
 
 import numpy as np
@@ -6,17 +5,17 @@ from numpy import linspace
 from scipy.special import jn
 
 
-from enthought.traits.api import HasTraits, Any, Array, Instance
-from enthought.tvtk.api import tvtk
-from enthought.mayavi import mlab
-from enthought.mayavi.modules.glyph import Glyph
-from enthought.enable.vtk_backend.vtk_window import EnableVTKWindow
-from enthought.chaco.api import ArrayPlotData, Plot, OverlayPlotContainer
-from enthought.chaco.tools.api import (PanTool, ZoomTool, MoveTool,
+from traits.api import HasTraits, Any, Array, Instance
+from tvtk.api import tvtk
+from mayavi import mlab
+from mayavi.modules.glyph import Glyph
+from enable.vtk_backend.vtk_window import EnableVTKWindow
+from chaco.api import ArrayPlotData, Plot, OverlayPlotContainer
+from chaco.tools.api import (PanTool, ZoomTool, MoveTool,
                                        RangeSelection, RangeSelectionOverlay)
-from enthought.chaco.scales.api import CalendarScaleSystem
-from enthought.chaco.scales_tick_generator import ScalesTickGenerator
-from enthought.chaco.scales_axis import PlotAxis as ScalesPlotAxis
+from chaco.scales.api import CalendarScaleSystem
+from chaco.scales_tick_generator import ScalesTickGenerator
+from chaco.axis import PlotAxis as ScalesPlotAxis
 
 
 # Helper function to load data
