@@ -166,7 +166,7 @@ class MLabChacoPlot(HasTraits):
             x, y, z, scalars = self.prices['Gasoline Supply'][msk], self.prices['Jet Fuel Supply'][msk], self.prices['Distillate Supply'][msk], self.prices['Crude Supply'][msk]
             
             self.m.glyph.mask_input_points = True
-            self.m.glyph.mask_points.offset = msk.argmax()
+            self.m.glyph.mask_points.offset = int(msk.argmax())
             self.m.glyph.mask_points.maximum_number_of_points = len(x)
             
             self.m.update_data()
