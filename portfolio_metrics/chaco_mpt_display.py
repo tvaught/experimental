@@ -17,7 +17,7 @@ import numpy as np
 
 # Enthought library imports
 from enable.api import Component, ComponentEditor
-from traits.api import HasTraits, Instance, List, Str, Button, Property, File
+from traits.api import HasTraits, Instance, Float, List, Str, Button, Property, File
 from traitsui.api import Item, Group, View, SetEditor, TabularEditor, ColorTrait
 from traitsui.tabular_adapter import TabularAdapter
 
@@ -34,10 +34,10 @@ import price_utils
 from stock_plot import StockPlot
 
 COLORS = [(0.8, 0.5, 0.3, 0.7),
-            (0.8, 0.1, 0.0, 0.7),
-            (0.8, 0.8, 0.4, 0.7),
-            (0.8, 0.8, 0.0, 0.7),
-            (0.5, 0.8, 0.3, 0.7),
+            (0.8, 0.1, 0.9, 0.7),
+            (0.8, 0.8, 0.2, 0.7),
+            (0.8, 0.4, 0.5, 0.7),
+            (0.5, 0.8, 0.8, 0.7),
             (0.1, 0.8, 0.0, 0.7),
             (0.4, 0.7, 0.8, 0.7),
             (0.0, 0.5, 0.8, 0.7),
@@ -46,14 +46,18 @@ COLORS = [(0.8, 0.5, 0.3, 0.7),
             (0.8, 0.4, 0.5, 0.7),
             (0.7, 0.0, 0.1, 0.7)]
 
-db = "data/stocks.db"
+#db = "data/stocks.db"
+db = "data/bonds.db"
+
+
 # TODO: Get rid of "tolist" requirement .. seems messy
 all_symbols = price_utils.load_symbols_from_table(dbfilename=db)['symbol'].tolist()
+print all_symbols
 
 # Some other ways to do symbols ...
 #init_symbols = ["CSCO", "AAPL", "IBM",  "MSFT", "GE", "WFC", "RIG", "T", "AA", "CAT"]
-init_symbols = ["AAPL", "GOOG", "EOG", "YUM", "AA", "BA", "COP"]
-#init_symbols = "data/SP500.csv"
+#init_symbols = ["AAPL", "GOOG", "EOG", "YUM", "AA", "BA", "COP"]
+init_symbols = ["FSTYX", "LALDX", "PIMSX", "USSBX", "BSV"]
 init_symbols.sort()
 
 def color_tuple_to_int(rgb_tuple):
@@ -111,8 +115,8 @@ class PortfolioModel(HasTraits):
     symbol_pool = List(Instance(Symbol))
 
     # Arbitrary date range for pulling asset data
-    startdate = Str("2000-07-1")
-    enddate = Str("2005-12-31")
+    startdate = Str("2000-01-1")
+    enddate = Str("2012-03-23")
 
     dbfilename = File("data/stocks.db")
     portfolio = Instance(mpt.Portfolio)
@@ -130,6 +134,9 @@ class PortfolioModel(HasTraits):
                         left_column_title='Symbols',
                         right_column_title='Selected Symbols'),
                         width=0.1)
+
+    model_portfolio_x = Float(0.0241)
+    model_portfolio_y = Float(0.051)
     
     traits_view = View(
                     Group(
@@ -143,6 +150,12 @@ class PortfolioModel(HasTraits):
                             Item('enddate',
                                  label='End Date',
                                  width=-20),
+                            Item('model_portfolio_x',
+                                 label='Model Portfolio Volatility',
+                                 style='simple'),
+                            Item('model_portfolio_y',
+                                 label='Model Portfolio Return',
+                                 style='simple'),
                             Item('recalc_button', show_label=False,
                                  width=-20),
                             Item('save_plot_button', show_label=False,
@@ -234,9 +247,9 @@ class PortfolioModel(HasTraits):
         # volatility value, given our daily rate data.  So, to make this more
         # friendly, start with annual volatility and convert for our
         # calculations.
-        rt0 = 0.05
-        rtn = 4.0
-        rtstep = 0.2
+        rt0 = 0.02
+        rtn = 1.0
+        rtstep = 0.02
         tdy = TRADING_DAYS_PER_YEAR
         rtrange = np.arange(rt0/tdy, rtn/tdy, rtstep/tdy)
 
@@ -247,7 +260,7 @@ class PortfolioModel(HasTraits):
         p = self.portfolio
     
         for rt in rtrange:
-            p.optimize_portfolio(rt=rt, lower_bound_weight=0.0, upper_bound_weight=1.0)
+            p.optimize_portfolio(rt=rt, lower_bound_weight=0.1, upper_bound_weight=1.0)
             px = p.port_opt.volatility
             py = p.port_opt.portfolio_return
             efx.append(px)
@@ -282,7 +295,7 @@ class PortfolioModel(HasTraits):
 
         symbs = p.symbols
 
-        pd = ArrayPlotData(x=x, y=y, efx=efx, efy=efy)
+        pd = ArrayPlotData(x=x, y=y, efx=efx, efy=efy, mp_x=[self.model_portfolio_x], mp_y=[self.model_portfolio_y])
 
         # Create some plots of the data
         plot = Plot(pd, title="Efficient Frontier")
@@ -301,6 +314,13 @@ class PortfolioModel(HasTraits):
                                           marker_size=6)[0]
         efpltline = plot.plot(("efx", "efy"), color=(0.1,0.4,0.1,0.7),
                                           type="line")[0]
+
+
+        # Create another one-point scatter for a model portfolio
+        mp_plot = plot.plot(("mp_x", "mp_y"), color=(1.0, 0.5, 0.5, 0.25),
+            type="scatter",
+            market="triangle",
+            market_size=7)[0]
 
         for i in range(len(p.stocks)):
             label = DataPointLabel(component=plot, data_point=(x[i], y[i]),
@@ -335,10 +355,10 @@ class PortfolioModel(HasTraits):
 
         # Tweak some of the plot properties
         plot.padding = 50
-        stockplt.value_range.low=-0.3
-        stockplt.value_range.high=0.7
+        stockplt.value_range.low=0.0
+        stockplt.value_range.high=0.1
         stockplt.index_range.low=0.0
-        stockplt.index_range.high=0.8
+        stockplt.index_range.high=0.1
         # Attach some tools to the plot
         plot.tools.append(PanTool(plot, drag_button="right"))
         plot.overlays.append(ZoomTool(plot))
@@ -373,7 +393,7 @@ class PortfolioModel(HasTraits):
                         outline_color = "gray")
 
         bplot.padding = 50
-        bplot.legend.visible = True
+        #bplot.legend.visible = True
 
         # Add a plot of the stocks
         stock_obj_list = [p.stocks[symb] for symb in symbs]

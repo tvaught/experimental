@@ -18,7 +18,7 @@ import numpy as np
 # Constants
 schema = np.dtype({'names':['symbol', 'date', 'open', 'high', 'low',
                        'close', 'volume', 'adjclose'],
-                   'formats':['S8', 'M8', float, float, float, float,
+                   'formats':['S8', 'M8[D]', float, float, float, float,
                        float, float]})
 
 def get_yahoo_prices(symbol, startdate=None, enddate=None,
@@ -41,7 +41,7 @@ def get_yahoo_prices(symbol, startdate=None, enddate=None,
         dtype:
         numpy.dtype({'names':['symbol', 'date', 'open', 'high', 'low',
                               'close', 'volume', 'adjclose'],
-                     'formats':['S8', 'M8', float, float, float, float,
+                     'formats':['S8', 'M8[D]', float, float, float, float,
                                 float, float]})
     """
     
@@ -89,7 +89,7 @@ def get_yahoo_prices(symbol, startdate=None, enddate=None,
     
 def get_yahoo_dividends(symbol, startdate, enddate, datefmt="%Y-%m-%d"):
 
-    """ Utility function to pull dividend date from Yahoo Finance site.
+    """ Utility function to pull dividend data from Yahoo Finance site.
     
         Parameters:
         symbol: string, a valid financial instrument symbol
@@ -104,7 +104,7 @@ def get_yahoo_dividends(symbol, startdate, enddate, datefmt="%Y-%m-%d"):
         numpy array containing dates and price/volume data in the following
         dtype:
         numpy.dtype({'names':['symbol', 'date', 'dividend'],
-                     'formats':['S8', 'M8', float]})
+                     'formats':['S8', 'M8[D]', float]})
         TODO: Not Implemented yet.
     """
     
