@@ -92,9 +92,9 @@ def load_from_db(symbol, startdate, enddate, dbfilename="data/stocks.db"):
     """ Convenience function to pull data out of our price database. """
     
     # TODO: This is convoluted and, most-likely, quite slow... fix later
-    dt = np.dtype('M8')
-    startdate = time.mktime(np.array(startdate, dtype=dt).tolist().timetuple())
-    enddate = time.mktime(np.array(enddate, dtype=dt).tolist().timetuple())
+    dt = np.dtype('M8[D]')
+    startdate = time.mktime(np.array([startdate], dtype=dt).tolist()[0].timetuple())
+    enddate = time.mktime(np.array([enddate], dtype=dt).tolist()[0].timetuple())
     
     conn = sqlite3.connect(dbfilename, 
         detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
@@ -176,8 +176,9 @@ def symbol_exists(symbol, dbfilename="data/stocks.db"):
     qry = conn.execute(sql)
     recs = qry.fetchall()
     schema = np.dtype({'names':['symbol', 'date'],
-                       'formats':['S8', 'M8']})
+                       'formats':['S8', 'M8[D]']})
     table = np.array(recs, dtype=schema)
+
     startdate = np.datetime64(table['date'][0])
     enddate = np.datetime64(table['date'][-1])
     return len(table), startdate, enddate
@@ -206,7 +207,7 @@ def load_symbols_from_table(dbfilename="data/stocks.db"):
     qry = conn.execute(sql)
     recs = qry.fetchall()
     dt = np.dtype({'names':['symbol', 'startdate', 'enddate', 'entries'],
-                   'formats':['S8', 'M8', 'M8', long]})
+                   'formats':['S8', 'M8[D]', 'M8[D]', long]})
     return np.array(recs, dtype=dt)
 
 
@@ -223,11 +224,11 @@ def populate_symbol_list(dbfilename="data/stocks.db", symbols=None):
         symbols = all_symbols(dbfilename=dbfilename)
 
     dt = np.dtype({'names':['symbol', 'startdate', 'enddate', 'entries'],
-                   'formats':['S8', 'M8', 'M8', long]})
+                   'formats':['S8', 'M8[D]', 'M8[D]', long]})
     data = []
 
     for symbol in symbols:
-        entries, startdate, enddate = symbol_exists(symbol)
+        entries, startdate, enddate = symbol_exists(symbol, dbfilename=dbfilename)
         data.append((symbol, startdate, enddate, entries))
 
     data = np.array(data, dtype=dt)

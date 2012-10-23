@@ -35,6 +35,7 @@ def align_dates(olddates, olddata, newdates):
         Returns:
             newdata: array of data aligned with newdates
     """
+
     olddatefloats = np.array([price_utils.adapt_datetime(dt) for dt in olddates.tolist()])
     newdatefloats = np.array([price_utils.adapt_datetime(dt) for dt in newdates.tolist()])
     datesbelow = newdatefloats < olddatefloats[0]
@@ -51,7 +52,7 @@ def align_dates(olddates, olddata, newdates):
 class Stock(object):
     
     def __init__(self, symbol, startdate="1995-1-1",
-        enddate="2011-7-31", dbfilename='data/stocks.db', bench='^GSPC', rfr=0.015):
+        enddate="2011-7-31", dbfilename='data/stocks.db', bench='LALDX', rfr=0.015):
         """ Stock object with some methods to call metrics functions to pre-
             populate some attributes, as well as methods to impute to a given
             datearray.
@@ -229,24 +230,29 @@ class Portfolio(object):
         variance = self.calc_variance()
         return variance, port_return
 
-    
-    def calc_variance(self):
-        """ A method for returning the portfolio variance.
-        """
-        
+    def calc_port_rates(self):
+
         port_ratearray = None
-        
+
         for symbol in self.symbols:
             srate = self.stocks[symbol].ratearray
             weight = self.weights[symbol]
             # Construct an empty portfolio rate array if there is not one.
             if port_ratearray is None:
                 dts = srate['date']
-                port_ratearray =  np.array(zip(dts, np.zeros(srate.shape)), 
-                                           dtype=srate.dtype)
+                port_ratearray =  np.array(zip(dts, np.zeros(srate.shape)),
+                    dtype=srate.dtype)
             port_ratearray['rate'] += srate['rate'] * weight
-        
+
         self.port_ratearray = port_ratearray
+        return port_ratearray
+
+    
+    def calc_variance(self):
+        """ A method for returning the portfolio variance.
+        """
+        
+        port_ratearray = self.calc_port_rates()
         
         self.volatility = volatility(port_ratearray)
         self.variance = self.volatility**2
@@ -391,8 +397,10 @@ class Portfolio(object):
         ret = round(result[1]*100.,3)
         
         print("Optimization completed in [ %s ] iterations." % count)
-        #print("Ending weights:\n%s\n" % self.port_opt.weights)
-        #print("Optimized Variance: %s and Portfolio Return: %s%%" % (variance, ret))
+        print("Ending weights:\n%s" % self.port_opt.weights)
+        print("Volatility: %s and Portfolio Return: %s%%" % (np.sqrt(variance), ret))
+        opt_rate_array = self.port_opt.calc_port_rates()
+        print("Portfolio Rate Array:%s\n" % opt_rate_array[:10])
         
         
 # EOF ####################################################################
