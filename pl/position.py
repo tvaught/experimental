@@ -20,7 +20,7 @@ import pandas
 from date_util import dt_to_timestamp, dt_from_timestamp, Eastern
 
 
-class Position(Object):
+class Position():
     """ Simple object to act as a data structure for a position 
     
         While all attributes are optional, classes that contain or
@@ -45,8 +45,6 @@ class Position(Object):
         self.exchange_rate = exchange_rate
         self.currency = currency
         self.total_amt = total_amt
-        self.filled = filled
-        self.exchange = exchange
     
     ################################
     # Override default class methods
