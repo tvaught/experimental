@@ -16,6 +16,16 @@ import pandas
 # Local imports
 from position import Position
 
+class Portfolio():
+    """ Dead simple container for Holdings """
+    
+    def __init__(self, name=""):
+        self.name = name
+        self.holdings = []
+        
+    def add_holding(self):
+        
+
 class Holding():
     """ Queue for held positions in the same security (as identified
         by symbol).  The removal of entries are handled in a 'fifo'
@@ -23,8 +33,7 @@ class Holding():
         remove_from method.
     """
 
-    def __init__(self, name=""):
-        self.name = name
+    def __init__(self):
         self.qty = 0.0
         self.positions = []
     
