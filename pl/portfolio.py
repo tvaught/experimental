@@ -16,7 +16,7 @@ import pandas
 # Local imports
 from position import Position
 
-class Holding(Object):
+class Holding():
     """ Queue for held positions in the same security (as identified
         by symbol).  The removal of entries are handled in a 'fifo'
         or a 'lifo' order, depending on the order argument of the

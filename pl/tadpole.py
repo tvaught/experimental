@@ -10,7 +10,7 @@ License: BSD
 """
 
 # Major package imports
-import numpy np
+import numpy as np
 import pandas as pd
 
 # Local imports
@@ -29,7 +29,7 @@ def main():
     # Allow the fees to be added by replacing nans with 0.0s
     fee_cols = ["COMMISSION", "REG FEE"]
     for col in fee_cols:
-        df[col].replace(nan, 0.0)
+        df[col].replace(np.nan, 0.0)
     
     dff = df[(boughts) | (solds)]
     print dff['DATE']
@@ -38,23 +38,40 @@ def main():
     
     port = Holding(name="TD Ameritrade - BMP")
     
-    for tran in dff:
+    for tran in dff.iterrows():
+        tran_data = tran[1]
+        if tran_data['DESCRIPTION'].startswith("Bought"):
+            side = "BUY"
+        elif tran_data['DESCRIPTION'].startswith("Sold"):
+            side = "SELL"
+        else:
+            side = "UNKNOWN"
         
-        Position(symbol=tran['SYMBOL'],
-                 id=tran['TRANSACTION ID'],
-                 description=tran['DESCRIPTION'],
-                 trans_date=tran['DATE'],
-                 qty=tran['QUANTITY'],
-                 price=tran['PRICE'],
-                 fee=tran['COMMISSION'] + tran['REG FEE']
-                 tot_amt=tran['']
-                 
-                 )
+        p = Position(symbol=tran_data['SYMBOL'],
+                 id=tran_data['TRANSACTION ID'],
+                 description=tran_data['DESCRIPTION'],
+                 trans_date=tran_data['DATE'],
+                 qty=tran_data['QUANTITY'],
+                 price=tran_data['PRICE'],
+                 fee=tran_data['COMMISSION'] + tran_data['REG FEE'],
+                 total_amt=tran_data['AMOUNT'],
+                 side = side)
         
+        if side == "BUY":
+            print "Adding %s to Portfolio" % p
+            port.add_to(p)
+            
+        elif side == "SELL":
+            print "Removing %s from Portfolio" % p
+            port.remove_from(p)
+            
+        
+    print port
         #if tran['DESCRIPTION'].startswith("Bought")
         #    port.add_to(Position(transaction['']))
     
+    return port
     
 if __name__ == '__main__':
-    main()
+    port = main()
 
