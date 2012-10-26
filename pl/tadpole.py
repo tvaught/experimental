@@ -36,35 +36,42 @@ def main():
     print dff['SYMBOL']
     print dff['DESCRIPTION']
     
-    port = Holding(name="TD Ameritrade - BMP")
+    port = Portfolio(name="TD Ameritrade - BMP")
     
-    for tran in dff.iterrows():
-        tran_data = tran[1]
-        if tran_data['DESCRIPTION'].startswith("Bought"):
-            side = "BUY"
-        elif tran_data['DESCRIPTION'].startswith("Sold"):
-            side = "SELL"
-        else:
-            side = "UNKNOWN"
+    # Loop through each Symbol as a holding
+    symbs = dff['SYMBOL'].unique()
+    
+    for symb in symbs:
+        dff_symb = dff[symb]
+        hld = Holding
+    
+        for tran in dff_symb.iterrows():
+            tran_data = tran[1]
+            if tran_data['DESCRIPTION'].startswith("Bought"):
+                side = "BUY"
+            elif tran_data['DESCRIPTION'].startswith("Sold"):
+                side = "SELL"
+            else:
+                side = "UNKNOWN"
+    
+            p = Position(symbol=tran_data['SYMBOL'],
+                     id=tran_data['TRANSACTION ID'],
+                     description=tran_data['DESCRIPTION'],
+                     trans_date=tran_data['DATE'],
+                     qty=tran_data['QUANTITY'],
+                     price=tran_data['PRICE'],
+                     fee=tran_data['COMMISSION'] + tran_data['REG FEE'],
+                     total_amt=tran_data['AMOUNT'],
+                     side = side)
+    
+            if side == "BUY":
+                print "Adding %s to Portfolio" % p
+                port.add_to(p)
         
-        p = Position(symbol=tran_data['SYMBOL'],
-                 id=tran_data['TRANSACTION ID'],
-                 description=tran_data['DESCRIPTION'],
-                 trans_date=tran_data['DATE'],
-                 qty=tran_data['QUANTITY'],
-                 price=tran_data['PRICE'],
-                 fee=tran_data['COMMISSION'] + tran_data['REG FEE'],
-                 total_amt=tran_data['AMOUNT'],
-                 side = side)
+            elif side == "SELL":
+                print "Removing %s from Portfolio" % p
+                port.remove_from(p)
         
-        if side == "BUY":
-            print "Adding %s to Portfolio" % p
-            port.add_to(p)
-            
-        elif side == "SELL":
-            print "Removing %s from Portfolio" % p
-            port.remove_from(p)
-            
         
     print port
         #if tran['DESCRIPTION'].startswith("Bought")
