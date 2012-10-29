@@ -19,11 +19,33 @@ from position import Position
 class Portfolio():
     """ Dead simple container for Holdings """
     
-    def __init__(self, name=""):
+    def __init__(self, name="", holdings=None):
         self.name = name
-        self.holdings = []
-        
-    def add_holding(self):
+
+        self.holdings = {}
+        if holdings:
+            if hasattr(holdings, "symbol"):
+                self.holdings[holdings.symbol] = holdings
+            else:
+                for itm in holdings:
+                    self.holdings[itm.symbol] = itm
+
+        return
+
+    def add_holding(self, holding):
+        """ Add to container (dict) for holdings (symbol is key)
+        """
+
+        self.holdings[holding.symbol] = holding
+        print "Added holding %s" % holding
+        return
+
+    def remove_holding(self, symbol):
+        """ Remove entry from holding dict for given symbol
+        """
+
+        del self.holdings[symbol]
+        return
         
 
 class Holding():
@@ -35,11 +57,19 @@ class Holding():
 
     def __init__(self):
         self.qty = 0.0
+        self.symbol = ""
         self.positions = []
+        return
     
     def add_to(self, position):
-        self.qty += position.qty
-        self.positions.append(position)
+        if not self.symbol:
+            self.symbol = position.symbol
+        if position.symbol==self.symbol:
+            self.qty += position.qty
+            self.positions.append(position)
+        else:
+            raise AttributeError
+        return
         
     def remove_from(self, position, order="fifo"):
         """ given a position designated as a removal, adjust
@@ -108,7 +138,6 @@ class Holding():
             self.positions[pos_idx].qty = remaining
             share_ratio = remaining/idx_qty
             self.positions[pos_idx].fee = self.positions[pos_idx].fee * share_ratio
-            
         return
         
     def __repr__(self):

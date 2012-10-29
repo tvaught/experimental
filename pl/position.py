@@ -29,7 +29,7 @@ class Position():
     
     """
     
-    def __init__(self, symbol, id, description, trans_date, qty, price,
+    def __init__(self, symbol, id, trans_date, qty, price, description="",
                     side="BUY", multiplier=1.0, fee=0.0, exchange_rate=1.0,
                     currency="USD", total_amt=0.0, filled=True, exchange=""):
         
