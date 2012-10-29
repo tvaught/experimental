@@ -46,7 +46,15 @@ class Portfolio():
 
         del self.holdings[symbol]
         return
+    
+    def pprint(self):
         
+        for holding in self.holdings:
+            print "%s Holdings:" % holding
+            for position in self.holdings[holding].positions:
+                print "%s\t%s\t%s\t%s\t%s\t%s" % (position.trans_date, position.side,
+                    position.description, position.qty, position.price, position.total_amt)
+                
 
 class Holding():
     """ Queue for held positions in the same security (as identified
@@ -96,6 +104,10 @@ class Holding():
         elif order=='wifo':
             raise NotImplementedError
         
+        if not self.positions:
+            print "WARNING: Trying to remove position where there are no positions in this holding."
+            return
+            
         self.positions.sort()
         idx_pos = self.positions[pos_idx]
         idx_qty = idx_pos.qty
@@ -142,9 +154,9 @@ class Holding():
         
     def __repr__(self):
         """ Custom representation of holding object. """
-        
-        if self.positions:
-            symbol = self.positions[0].symbol
+        if hasattr(self, "positions"):
+            if self.positions:
+                symbol = self.positions[0].symbol
         return "<%s, qty: %s as %s>" % (symbol, self.qty, self.positions)
     
     

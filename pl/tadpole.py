@@ -14,8 +14,8 @@ import numpy as np
 import pandas as pd
 
 # Local imports
-from position import Position
-from portfolio import Holding
+import position
+import portfolio
 
 def main():
     df = pd.read_csv(open('./test/transtest.csv'), comment="***")
@@ -26,25 +26,24 @@ def main():
     boughts = df['DESCRIPTION'].map(bought_filter)
     solds = df['DESCRIPTION'].map(sold_filter)
     
-    # Allow the fees to be added by replacing nans with 0.0s
+    # Allow the fees to be summed by replacing nans with 0.0s
     fee_cols = ["COMMISSION", "REG FEE"]
     for col in fee_cols:
         df[col].replace(np.nan, 0.0)
     
     dff = df[(boughts) | (solds)]
-    print dff['DATE']
-    print dff['SYMBOL']
-    print dff['DESCRIPTION']
     
-    port = Portfolio(name="TD Ameritrade - BMP")
+    port = portfolio.Portfolio(name="TD Ameritrade - BMP")
     
     # Loop through each Symbol as a holding
-    symbs = dff['SYMBOL'].unique()
+    symbs = np.asarray(dff['SYMBOL'].unique(), dtype='S50')
     
     for symb in symbs:
-        dff_symb = dff[symb]
-        hld = Holding
-    
+        # Filter for current symbol
+        dff_symb = dff[dff['SYMBOL']==symb]
+        hld = portfolio.Holding()
+        
+        # Populate a holding with all positions
         for tran in dff_symb.iterrows():
             tran_data = tran[1]
             if tran_data['DESCRIPTION'].startswith("Bought"):
@@ -54,7 +53,7 @@ def main():
             else:
                 side = "UNKNOWN"
     
-            p = Position(symbol=tran_data['SYMBOL'],
+            p = position.Position(symbol=tran_data['SYMBOL'],
                      id=tran_data['TRANSACTION ID'],
                      description=tran_data['DESCRIPTION'],
                      trans_date=tran_data['DATE'],
@@ -66,12 +65,17 @@ def main():
     
             if side == "BUY":
                 print "Adding %s to Portfolio" % p
-                port.add_to(p)
+                hld.add_to(p)
         
-            elif side == "SELL":
+            elif side == "SELL" and hasattr(hld, "positions"):
                 print "Removing %s from Portfolio" % p
-                port.remove_from(p)
+                hld.remove_from(p)
+            
+            else:
+                print "Adding short position %s to Portfolio" % p
+                hld.add_to(p)
         
+        port.add_holding(hld)
         
     print port
         #if tran['DESCRIPTION'].startswith("Bought")
