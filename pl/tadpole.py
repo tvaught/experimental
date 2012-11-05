@@ -77,7 +77,7 @@ def main():
         
         port.add_holding(hld)
         
-    print port
+    port.pprint()
         #if tran['DESCRIPTION'].startswith("Bought")
         #    port.add_to(Position(transaction['']))
     

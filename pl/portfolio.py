@@ -19,13 +19,14 @@ from position import Position
 class Portfolio():
     """ Dead simple container for Holdings """
     
-    def __init__(self, name="", holdings=None):
+    def __init__(self, name="", holdings=None, cash_bal=0.0):
         self.name = name
-
+        self.cash_bal = cash_bal
         self.holdings = {}
         if holdings:
             if hasattr(holdings, "symbol"):
                 self.holdings[holdings.symbol] = holdings
+            #TODO: fix this...assume a list of holdings objects passed in
             else:
                 for itm in holdings:
                     self.holdings[itm.symbol] = itm
@@ -68,7 +69,18 @@ class Holding():
         self.symbol = ""
         self.positions = []
         return
-    
+
+    def adjust_holding(self, position):
+        """ Adjusts a holding based on a provided position argument.
+            inputs:
+                position - the position causing the alteration
+            returns:
+                None
+
+            All the branching logic is handled with this method, and add_item or remove_item
+            are called depending on the attributes of the position object passed in.
+        """
+
     def add_to(self, position):
         if not self.symbol:
             self.symbol = position.symbol
@@ -86,27 +98,31 @@ class Holding():
             
             inputs:
                 position - the position causing the alteration
-                order - one of 'fifo', 'lifo' or 'wifo'
+                order - one of 'fifo' or 'lifo'
                 
             returns:
                 None
             
             'fifo' - first-in-first-out
             'lifo' - last-in-first-out
-            'wifo' - worst-in-first-out - not implemented (need to figure out
-                how to do sorting of positions flexibly)
+
+            This method implements a queue reduction of holdings by the amount specified in the
+            provided 'position' quantity (qty).  This method also serves the purpose of populating a 'statement'
+            property -- capturing a P/L amount based on the prior costs.
+
+            The queueing actually handles the four cases of a) zeroing out a holding, b) reducing a holding
+            c) eliminating a holding and recursing to the next held item, or d) eliminating a holding with no
+            next item, and adding a holding in the other direction.
         """
         
         if order=='fifo':
             pos_idx = 0
         elif order=='lifo':
             pos_idx = -1
-        elif order=='wifo':
-            raise NotImplementedError
         
         if not self.positions:
-            print "WARNING: Trying to remove position where there are no positions in this holding."
-            return
+            raise KeyError("No positions in Holding to remove")
+
             
         self.positions.sort()
         idx_pos = self.positions[pos_idx]
