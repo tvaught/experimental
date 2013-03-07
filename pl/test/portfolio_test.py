@@ -174,10 +174,13 @@ def portfolio_port_test():
     h.add_to(p2)
 
     h2 = portfolio.Holding()
-
+    h2.add_to(p3)
+    
     portf = portfolio.Portfolio(name="Test Portfolio", holdings=[h,h2])
 
-    print portf
+    print dir(portf)
+    print portf.holdings
+    print portf.pprint
     assert len(portf.holdings)==2
     assert portf.holdings["GOOG"].symbol=="GOOG"
 

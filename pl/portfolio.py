@@ -170,9 +170,11 @@ class Holding():
         
     def __repr__(self):
         """ Custom representation of holding object. """
-        if hasattr(self, "positions"):
+        symbol = "No Holding"
+	if hasattr(self, "positions"):
             if self.positions:
                 symbol = self.positions[0].symbol
+        
         return "<%s, qty: %s as %s>" % (symbol, self.qty, self.positions)
     
     
