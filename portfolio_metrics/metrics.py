@@ -42,7 +42,7 @@ def annualized_rate(ratearray):
     yrs = float(duration.tolist().days)/float(CALENDAR_DAYS_PER_YEAR)
     total_return = chain_linked_return(ratearray)
 
-    # TODO: This needs to be checked
+    # TODO: This still needs to be checked
     return (total_return+1)**(1/yrs)-1
     
 
